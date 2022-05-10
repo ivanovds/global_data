@@ -122,10 +122,3 @@ NYSE_HOLIDAYS = [
         'status': 'Closed',
     },
 ]
-
-
-def is_holiday(current_datetime):
-    for holiday in NYSE_HOLIDAYS:
-        if current_datetime.strftime("%d.%m.%Y") == holiday['date'] and (holiday['status'] == 'Closed'):
-            return True
-    return False
