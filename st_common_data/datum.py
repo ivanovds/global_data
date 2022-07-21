@@ -50,7 +50,7 @@ def get_datum_data_by_ticker(db_creds, ticker, review_date):
 
 
 def get_total_session_volume(db_creds, ticker, review_date, session):
-    datum_data = get_datum_data_by_ticker(ticker, review_date, db_creds)
+    datum_data = get_datum_data_by_ticker(db_creds=db_creds, ticker=ticker, review_date=review_date)
 
     if not datum_data:
         return None
@@ -83,7 +83,7 @@ def get_total_session_volume(db_creds, ticker, review_date, session):
 
 def get_datum_candlestick(db_creds, session, ticker, review_date, all_sessions=False,):
     """Create datum candlestick for session using datum data by ticker"""
-    datum_data = get_datum_data_by_ticker(ticker, review_date, db_creds)
+    datum_data = get_datum_data_by_ticker(db_creds=db_creds, ticker=ticker, review_date=review_date)
 
     if not datum_data:
         return {}
@@ -155,7 +155,7 @@ def get_datum_candlestick_in_regular_timeframe(db_creds, ticker, review_date):
     But use regular timeframe from 4:00 to 20:00 instead.
     """
 
-    datum_data = get_datum_data_by_ticker(ticker, review_date, db_creds)
+    datum_data = get_datum_data_by_ticker(db_creds=db_creds, ticker=ticker, review_date=review_date)
     if not datum_data:
         return {}
 
