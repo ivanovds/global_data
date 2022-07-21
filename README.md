@@ -13,7 +13,7 @@ pip install st_common_data
 
 ```python
 from st_common_data.nyse_holidays import NYSE_HOLIDAYS
-from st_common_data.utils import (
+from st_common_data.utils.common import (
     is_holiday,
     get_current_eastern_datetime,
     round_half_up_decimal,

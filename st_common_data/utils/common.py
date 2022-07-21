@@ -1,8 +1,53 @@
+import psycopg2
+from psycopg2 import extras
 import datetime
 import pytz
 from decimal import Decimal, ROUND_HALF_UP
 
-from .nyse_holidays import NYSE_HOLIDAYS
+from st_common_data.nyse_holidays import NYSE_HOLIDAYS
+
+
+def touch_db(query, dbp, params=None, save=False, returning=False, transaction=False):
+    try:
+        with psycopg2.connect(dbp) as conn:
+            with conn.cursor() as cur:
+                if not transaction:
+                    cur.execute(query, params)
+                else:
+                    for part in query:
+                        cur.execute(part)
+                if save:
+                    conn.commit()
+                    if returning:
+                        return cur.fetchall()
+                    else:
+                        return True
+                else:
+                    return cur.fetchall()
+    except psycopg2.Error as err:
+        raise Exception(f'ERR touch_db: {str(err)}')
+
+
+def touch_db_with_dict_response(query, dbp, params=None, save=False, returning=False,
+                                transaction=False):
+    try:
+        with psycopg2.connect(dbp) as conn:
+            with conn.cursor(cursor_factory=extras.RealDictCursor) as cur:
+                if not transaction:
+                    cur.execute(query, params)
+                else:
+                    for part in query:
+                        cur.execute(part)
+                if save:
+                    conn.commit()
+                    if returning:
+                        return cur.fetchall()
+                    else:
+                        return True
+                else:
+                    return cur.fetchall()
+    except psycopg2.Error as err:
+        raise Exception(f'ERR touch_db_with_dict_response: {str(err)}')
 
 
 def get_current_datetime():
@@ -85,3 +130,9 @@ def round_or_zero(num):
         return round_half_up(num)
     else:
         return 0
+
+
+def convert_dict_keys_to_str(param_dict):
+    return {str(k): v for k, v in param_dict.items()}
+
+
