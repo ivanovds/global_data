@@ -30,5 +30,5 @@ python3 -m pip install --upgrade twine
 
 Run this command from the same directory where dist directory is located:
 ```
-twine upload dist/*
+twine upload dist/st_common_data-{new version number}.tar.gz
 ```

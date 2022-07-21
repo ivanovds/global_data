@@ -236,10 +236,11 @@ def get_tickers_sector(db_creds, ticker_names_tuple: Tuple[str]):
 
         tickers_sectors = touch_db(
             """
-              SELECT public.st_bics_level(3, c.id_bics), ticker_by_esignal
-              FROM tickers_by_company t
-              JOIN company c ON c.id = t.id_company
-              WHERE ticker_by_esignal in %s;
+                SELECT bics_inline.lvl3, ticker_by_esignal
+                FROM tickers_by_company t
+                JOIN company c ON c.id = t.id_company
+                JOIN bics_inline ON bics_inline.id_company = c.id
+                WHERE ticker_by_esignal in %s;
             """ % ticker_names_str,
             dbp=db_creds
         )
@@ -253,9 +254,8 @@ def get_tickers_sector(db_creds, ticker_names_tuple: Tuple[str]):
 def get_sector_list(db_creds, level=3):
     response = touch_db(
         """
-          SELECT distinct (public.st_bics_level(%s, c.id_bics))
-          FROM tickers_by_company t
-          JOIN company c ON c.id = t.id_company
+          SELECT DISTINCT lvl%s
+          FROM bics_inline
         """ % level,
         dbp=db_creds
     )
