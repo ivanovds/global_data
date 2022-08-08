@@ -181,7 +181,7 @@ def get_splits(db_creds, review_date_str: Union[datetime.date, str]):
     return splits_dict
 
 
-def ticker_split(db_creds, ticker, date):
+def ticker_split_stock_dividend(db_creds, ticker, date):
     split = touch_db(
         f"""
               SELECT ticker_by_esignal, amount
@@ -189,7 +189,7 @@ def ticker_split(db_creds, ticker, date):
               LEFT JOIN dvd ON t.id = dvd.id_ticker
               WHERE ex_date = '{date}'
               AND ticker_by_esignal = '{ticker}'
-              AND id_dvd_type IN (38, 75);
+              AND id_dvd_type IN (38, 75, 46);
             """,
         dbp=db_creds
     )
