@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.dependencies import get_db
 from app.settings import config
-user_class = getattr(app.models, config.AUTH_USER_CLASS)  # in tier_system AUTH_USER_CLASS="UserDataModel"
+UserModel = getattr(app.models, config.AUTH_USER_MODEL)  # in tier_system AUTH_USER_MODEL="UserDataModel"
 from . import SingletonMeta
 
 
@@ -57,7 +57,7 @@ jwks = JWKS(auth0_domain=config.auth0_domain)
 @dataclass(frozen=True)
 class User:
     admin: bool
-    user_data: UserDataModel
+    user_data: UserModel
     claims: dict
 
 
@@ -180,7 +180,7 @@ async def get_user_from_claims(
         raise AuthenticationFailed(detail='Invalid sub in token')
 
     try:
-        user_data = session.query(UserDataModel).filter(UserDataModel.auth0 == auth0_user_id).one()
+        user_data = session.query(UserModel).filter(UserModel.auth0 == auth0_user_id).one()
     except NoResultFound:
         raise PermissionDenied
     return User(
