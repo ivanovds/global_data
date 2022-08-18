@@ -5,6 +5,7 @@ from typing import Optional
 from urllib.request import urlopen
 
 import requests
+from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework import HTTP_HEADER_ENCODING, authentication
 from rest_framework.exceptions import AuthenticationFailed
@@ -13,9 +14,7 @@ from jose import jwt
 
 from . import SingletonMeta
 
-module = importlib.import_module(settings.AUTH_USER_MODULE)  # in MSW: 'index.models'
-user_class = getattr(module, settings.AUTH_USER_CLASS)  # in MSW: 'CustomUser'
-User = user_class()
+UserModel = get_user_model()
 
 
 class JWKS(metaclass=SingletonMeta):
@@ -166,8 +165,8 @@ class Auth0Authentication(authentication.BaseAuthentication):
             return None
 
         try:
-            return User.objects.get(auth0=user_id)
-        except (User.DoesNotExist, KeyError):
+            return UserModel.objects.get(auth0=user_id)
+        except (UserModel.DoesNotExist, KeyError):
             return None
 
 
