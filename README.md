@@ -23,12 +23,16 @@ from st_common_data.utils.common import (
 
 ## To update pip package via terminal:
 
+1) Add updates
+2) Change version in st_common_data.__init__.py
+3) Commit changes
+4) 
 ```
 python3 -m build
 python3 -m pip install --upgrade twine
 ```
 
-Run this command from the same directory where dist directory is located:
+5) Run this command from the same directory where dist directory is located:
 ```
-twine upload dist/st_common_data-{new version number}.tar.gz
+twine upload --skip-existing dist/*
 ```

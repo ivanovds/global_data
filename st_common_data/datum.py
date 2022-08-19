@@ -3,14 +3,9 @@ from typing import Tuple, Union
 import datetime
 
 from st_common_data.utils.common import (
-    touch_db_with_dict_response, touch_db, get_previous_workday, convert_dict_keys_to_str,
+    touch_db_with_dict_response, touch_db,
     get_current_datetime,
 )
-from st_common_data.utils.trading import (
-    get_intervals_template, get_intervals_all_sessions_template,
-    get_intervals_template_in_regular_timeframe,
-)
-from st_common_data import settings
 
 
 def get_datum_data_by_ticker(db_creds, ticker, review_date):
@@ -49,146 +44,6 @@ def get_datum_data_by_ticker(db_creds, ticker, review_date):
     return datum_data
 
 
-def get_total_session_volume(db_creds, ticker, review_date, session):
-    datum_data = get_datum_data_by_ticker(db_creds=db_creds, ticker=ticker, review_date=review_date)
-
-    if not datum_data:
-        return None
-
-    target_date = get_target_date(session, review_date)
-
-    total_volume = 0
-    for row in datum_data:
-        execution_time = row[1]
-        execution_date = row[2]
-        volume = row[7]
-
-        if execution_date == target_date:
-
-            if session == settings.INTRADAY:
-                if (execution_time >= settings.OFFICIAL_SESSION_TIME_INTERVAL[settings.INTRADAY][0]) and (
-                        execution_time <= settings.OFFICIAL_SESSION_TIME_INTERVAL[settings.INTRADAY][1]):
-                    total_volume += volume
-            elif session == settings.POSTMARKET:
-                if (execution_time > settings.OFFICIAL_SESSION_TIME_INTERVAL[settings.POSTMARKET][0]) and (
-                        execution_time < settings.OFFICIAL_SESSION_TIME_INTERVAL[settings.POSTMARKET][1]):
-                    total_volume += volume
-            elif session == settings.PREMARKET:
-                if (execution_time >= settings.OFFICIAL_SESSION_TIME_INTERVAL[settings.PREMARKET][0]) and (
-                        execution_time < settings.OFFICIAL_SESSION_TIME_INTERVAL[settings.PREMARKET][1]):
-                    total_volume += volume
-
-    return total_volume
-
-
-def get_datum_candlestick(db_creds, session, ticker, review_date, all_sessions=False,):
-    """Create datum candlestick for session using datum data by ticker"""
-    datum_data = get_datum_data_by_ticker(db_creds=db_creds, ticker=ticker, review_date=review_date)
-
-    if not datum_data:
-        return {}
-
-    target_date = get_target_date(session, review_date)
-
-    default_value = {
-        'open': -1,
-        'close': -1,
-        'high': -1,
-        'low': -1,
-        'volume': -1,
-    }
-    if all_sessions:
-        candlestick = get_intervals_all_sessions_template(default_value=default_value)
-        target_date_int_pos = get_target_date(settings.INTRADAY, review_date)  # date of Intraday and Postmarket
-        target_date_pre = get_target_date(settings.PREMARKET, review_date)  # date of Premarket
-    else:
-        candlestick = get_intervals_template(session, default_value=default_value)
-        target_date_int_pos = None
-        target_date_pre = None
-
-    for row in datum_data:
-        interval_time = row[1]
-        if interval_time not in candlestick:
-            continue
-
-        execution_date = row[2]
-        opened = row[3]
-        high = row[4]
-        low = row[5]
-        close = row[6]
-        volume = row[7]
-
-        to_add = False
-        if all_sessions:
-            if execution_date == target_date_int_pos and (
-                    (interval_time >= settings.SESSION_TIME_INTERVAL[settings.INTRADAY][0]) and (
-                    interval_time < settings.SESSION_TIME_INTERVAL[settings.POSTMARKET][1])):
-                to_add = True
-            elif execution_date == target_date_pre and (
-                    (interval_time >= settings.SESSION_TIME_INTERVAL[settings.PREMARKET][0]) and (
-                    interval_time < settings.SESSION_TIME_INTERVAL[settings.PREMARKET][1])):
-                to_add = True
-
-        # per session:
-        elif execution_date == target_date and (
-                (interval_time >= settings.SESSION_TIME_INTERVAL[session][0]) and (
-                interval_time < settings.SESSION_TIME_INTERVAL[session][1])):
-            to_add = True
-
-        if to_add:
-            candlestick[interval_time]['volume'] = int(volume)
-            candlestick[interval_time]['open'] = round(opened, 2)
-            candlestick[interval_time]['high'] = round(high, 2)
-            candlestick[interval_time]['low'] = round(low, 2)
-            candlestick[interval_time]['close'] = round(close, 2)
-
-    # convert keys from time to str:
-    candlestick = convert_dict_keys_to_str(candlestick)
-
-    return candlestick
-
-
-def get_datum_candlestick_in_regular_timeframe(db_creds, ticker, review_date):
-    """Create datum candlestick using datum data by ticker
-
-    Use not DR timeframe which is from 10:00 to 10:00.
-    But use regular timeframe from 4:00 to 20:00 instead.
-    """
-
-    datum_data = get_datum_data_by_ticker(db_creds=db_creds, ticker=ticker, review_date=review_date)
-    if not datum_data:
-        return {}
-
-    default_value = {
-        'open': -1,
-        'close': -1,
-        'high': -1,
-        'low': -1,
-        'volume': -1,
-    }
-
-    candlestick = get_intervals_template_in_regular_timeframe(default_value=default_value)
-
-    for row in datum_data:
-        interval_time = row[1]
-        if interval_time not in candlestick:
-            continue
-
-        execution_date = row[2]
-
-        if execution_date == review_date:
-            candlestick[interval_time]['volume'] = int(row[7])
-            candlestick[interval_time]['open'] = round(row[3], 2)
-            candlestick[interval_time]['high'] = round(row[4], 2)
-            candlestick[interval_time]['low'] = round(row[5], 2)
-            candlestick[interval_time]['close'] = round(row[6], 2)
-
-    # convert keys from time to str:
-    candlestick = convert_dict_keys_to_str(candlestick)
-
-    return candlestick
-
-
 def premarket_datum_is_ready(db_creds):
     """Check if current Premarket is ready in Datum DB"""
     is_ready = False
@@ -215,15 +70,6 @@ def premarket_datum_is_ready(db_creds):
         return False
 
     return is_ready
-
-
-def get_target_date(session, review_date):
-    if session == settings.PREMARKET:
-        target_date = review_date
-    else:
-        target_date = get_previous_workday(review_date)
-
-    return target_date
 
 
 def get_tickers_sector(db_creds, ticker_names_tuple: Tuple[str]):
@@ -335,7 +181,7 @@ def get_splits(db_creds, review_date_str: Union[datetime.date, str]):
     return splits_dict
 
 
-def ticker_split(db_creds, ticker, date):
+def ticker_split_stock_dividend(db_creds, ticker, date):
     split = touch_db(
         f"""
               SELECT ticker_by_esignal, amount
@@ -343,7 +189,7 @@ def ticker_split(db_creds, ticker, date):
               LEFT JOIN dvd ON t.id = dvd.id_ticker
               WHERE ex_date = '{date}'
               AND ticker_by_esignal = '{ticker}'
-              AND id_dvd_type IN (38, 75);
+              AND id_dvd_type IN (38, 75, 46);
             """,
         dbp=db_creds
     )
@@ -600,7 +446,7 @@ def get_close_price_as_dict(db_creds, date=None):
                 WHERE date = Holidays.get_prev_work_date('%s') AND active
             """ % date
     list_of_dicts = touch_db_with_dict_response(query=query, dbp=db_creds)
-    return {row['ticker']: row['close_price'] for row in list_of_dicts}
+    return {row['ticker_by_esignal']: row['close'] for row in list_of_dicts}
 
 
 def get_avg_pre_mh_vol(db_creds, date=None):
