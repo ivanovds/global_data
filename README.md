@@ -24,9 +24,9 @@ from st_common_data.utils.common import (
 ## To update pip package via terminal:
 
 1) Add updates
-2) Change version in st_common_data.__init__.py
+2) Change version in st_common_data.\__init\__.py
 3) Commit changes
-4) 
+4) Run build:
 ```
 python3 -m build
 python3 -m pip install --upgrade twine
