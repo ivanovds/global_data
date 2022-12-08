@@ -1,11 +1,87 @@
+import logging
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Tuple, Union
+from typing import Tuple, Union, List
 import datetime
+import requests
 
 from st_common_data.utils.common import (
     touch_db_with_dict_response, touch_db,
-    get_current_datetime,
+    get_current_datetime, is_working_day, get_previous_workday,
 )
+
+logger = logging.getLogger(__name__)
+
+"""
+------------ DONE:
+
+get_datum_data_by_ticker ----- last_n_candles
+new function name: get_last_n_candles_by_ticker
+TODO:
+- need updates in Reporting System (create_old_charts_response function)
+- what unix_timestamp and n_candles to use ? () 
+
+
+get_reports ----- reports
+     TODO: 
+     - update parameters in other services
+
+
+get_splits ----- /dvd/splits
+    TODO: 
+    - update parameters in other services
+
+
+get_dividends ----- /dvd/
+    TODO: 
+    - update parameters in other services
+
+
+get_stock_dividends ----- /dvd/
+    TODO: 
+    - update parameters in other services
+
+
+ticker_split_stock_dividend ----- /dvd/
+    TODO: 
+    - update parameters in other services
+
+
+get_adv ----- /calculations/avg_daily_value_traded_3m
+    TODO: 
+    - update parameters in other services
+
+
+get_average_daily_volume ----- /calculations/avg_daily_value_traded_3m
+    TODO: 
+    - check if it is used in other services???
+
+
+get_close_price, get_close_price_as_dict ----- latest_close_prices
+    TODO: 
+    - update parameters in other services
+
+"""
+
+
+def datum_api_request(url: str,
+                      service_auth0_token: str,
+                      params: dict):
+    """
+    Return:
+     - json response from Datum API if success
+     - raise Exception if error
+    """
+    api_response = requests.get(
+        url,
+        headers={'Authorization': f'Bearer {service_auth0_token}'},
+        params=params
+    )
+    if api_response.status_code == 200:
+        return api_response.json()
+    else:
+        err_msg = f'Unable to make Datum API request: {api_response.text}'
+        logger.error(err_msg)
+        raise Exception(err_msg)
 
 
 def get_datum_data_by_ticker(db_creds, ticker, review_date):
@@ -42,6 +118,29 @@ def get_datum_data_by_ticker(db_creds, ticker, review_date):
         dbp=db_creds
     )
     return datum_data
+
+
+def get_last_n_candles_by_ticker(datum_api_url: str,
+                                 service_auth0_token: str,
+                                 ticker: str,
+                                 n_candles: int,
+                                 interval: int = 5,
+                                 unix_timestamp: int = None,
+                                 ) -> List[dict]:
+    params = {
+        'ticker': ticker,
+        'interval': interval,
+        'n_candles': n_candles,
+        'unix_timestamp': unix_timestamp
+    }
+
+    list_of_dicts = datum_api_request(
+        url=f'{datum_api_url}/intraday/last_n_candles',
+        service_auth0_token=service_auth0_token,
+        params=params
+    )
+
+    return list_of_dicts
 
 
 def premarket_datum_is_ready(db_creds):
@@ -154,31 +253,50 @@ def get_etf_list(db_creds):
     return etf_list
 
 
-def get_splits(db_creds, review_date_str: Union[datetime.date, str]):
-    """Return dict of {str: Decimal}"""
-    splits = touch_db(
-        f"""
-          SELECT ticker_by_esignal, amount
-          FROM tickers_by_company t
-          LEFT JOIN dvd ON t.id = dvd.id_ticker
-          WHERE ex_date = '{review_date_str}'
-          AND id_dvd_type IN (38, 75);
-        """,
-        dbp=db_creds
+# def get_splits(db_creds, review_date_str: Union[datetime.date, str]):
+#     """Return dict of {str: Decimal}"""
+#     splits = touch_db(
+#         f"""
+#           SELECT ticker_by_esignal, amount
+#           FROM tickers_by_company t
+#           LEFT JOIN dvd ON t.id = dvd.id_ticker
+#           WHERE ex_date = '{review_date_str}'
+#           AND id_dvd_type IN (38, 75);
+#         """,
+#         dbp=db_creds
+#     )
+#
+#     splits_dict = {}
+#     for row in splits:
+#         try:
+#             if row[1] is not None:
+#                 splits_dict[row[0]] = Decimal(row[1]).quantize(
+#                     Decimal('0.01'),
+#                     rounding=ROUND_HALF_UP
+#                 )
+#         except TypeError:
+#             pass
+#
+#     return splits_dict
+
+
+def get_splits(datum_api_url: str,
+               review_date_str: Union[datetime.date, str],
+               service_auth0_token: str
+               ) -> dict:
+    """Return dict of {str: decimal}"""
+    list_of_dicts = datum_api_request(
+        url=f'{datum_api_url}/dvd/splits',
+        service_auth0_token=service_auth0_token,
+        params={'date': review_date_str}
     )
 
-    splits_dict = {}
-    for row in splits:
-        try:
-            if row[1] is not None:
-                splits_dict[row[0]] = Decimal(row[1]).quantize(
-                    Decimal('0.01'),
-                    rounding=ROUND_HALF_UP
-                )
-        except TypeError:
-            pass
-
-    return splits_dict
+    return {
+        row['ticker_by_esignal']: Decimal(row['amount']).quantize(
+            Decimal('0.01'),
+            rounding=ROUND_HALF_UP
+        ) for row in list_of_dicts
+    }
 
 
 def ticker_split_stock_dividend(db_creds, ticker, date):
@@ -203,57 +321,99 @@ def ticker_split_stock_dividend(db_creds, ticker, date):
     return response
 
 
-def get_reports(db_creds, review_date_str: Union[datetime.date, str]):
-    reports = touch_db(
-        f"""
-        SELECT ticker_by_esignal, announcement_date, announcement_time
-        FROM tickers_by_company t 
-        JOIN earnings_date_history edh ON edh.id_company = t.id_company
-        JOIN exchange e ON e.id = t.id_exchange
-        WHERE e.id_country = (SELECT id FROM country WHERE name = 'UNITED STATES')
-        AND (edh.move_date = '{review_date_str}' OR announcement_date = '{review_date_str}')
-        ORDER BY ticker_by_esignal DESC;
-        """,
-        dbp=db_creds
-    )
-    reports_dict = {}
-    if reports:
-        for row in reports:
-            try:
-                if row[1] is not None:
-                    reports_dict[row[0]] = row[1]
-            except TypeError:
-                pass
-    return reports_dict
+# def get_reports(db_creds, review_date_str: Union[datetime.date, str]):
+#     reports = touch_db(
+#         f"""
+#         SELECT ticker_by_esignal, announcement_date, announcement_time
+#         FROM tickers_by_company t
+#         JOIN earnings_date_history edh ON edh.id_company = t.id_company
+#         JOIN exchange e ON e.id = t.id_exchange
+#         WHERE e.id_country = (SELECT id FROM country WHERE name = 'UNITED STATES')
+#         AND (edh.move_date = '{review_date_str}' OR announcement_date = '{review_date_str}')
+#         ORDER BY ticker_by_esignal DESC;
+#         """,
+#         dbp=db_creds
+#     )
+#     reports_dict = {}
+#     if reports:
+#         for row in reports:
+#             try:
+#                 if row[1] is not None:
+#                     reports_dict[row[0]] = row[1]
+#             except TypeError:
+#                 pass
+#     return reports_dict
 
 
-def get_dividends(db_creds, review_date_str: Union[datetime.date, str]):
-    """Return dict of {str: Decimal}"""
-    dividends = touch_db(
-        f"""
-            SELECT ticker_by_esignal, round(SUM(amount)::numeric, 2)
-            FROM tickers_by_company t
-            LEFT JOIN dvd ON t.id = dvd.id_ticker
-            WHERE ex_date = '{review_date_str}'
-            AND id_dvd_type IN (35, 41, 43, 45, 51, 76, 47, 48, 53, 52, 42, 58, 68, 73, 74, 77, 85, 90, 70)
-            GROUP BY ticker_by_esignal;
-        """,
-        dbp=db_creds
+def get_reports(datum_api_url: str,
+                move_date_str: str,
+                service_auth0_token: str) -> List[str]:
+    """Return list of tickers which have report event as of move_date_str"""
+    list_of_dicts = datum_api_request(
+        url=f'{datum_api_url}/reports/',
+        service_auth0_token=service_auth0_token,
+        params={'move_date_str': move_date_str}
     )
 
-    dividends_dict = {}
-    if dividends:
-        for row in dividends:
-            try:
-                if row[1] is not None:
-                    dividends_dict[row[0]] = Decimal(row[1]).quantize(
-                        Decimal('0.01'),
-                        rounding=ROUND_HALF_UP
-                    )
-            except TypeError:
-                pass
+    tickers_list = [row['ticker_by_esignal'] for row in list_of_dicts]
+    return tickers_list
 
-    return dividends_dict
+
+# def get_dividends(db_creds, review_date_str: Union[datetime.date, str]):
+#     """Return dict of {str: Decimal}"""
+#     dividends = touch_db(
+#         f"""
+#             SELECT ticker_by_esignal, round(SUM(amount)::numeric, 2)
+#             FROM tickers_by_company t
+#             LEFT JOIN dvd ON t.id = dvd.id_ticker
+#             WHERE ex_date = '{review_date_str}'
+#             AND id_dvd_type IN (35, 41, 43, 45, 51, 76, 47, 48, 53, 52, 42, 58, 68, 73, 74, 77, 85, 90, 70)
+#             GROUP BY ticker_by_esignal;
+#         """,
+#         dbp=db_creds
+#     )
+#
+#     dividends_dict = {}
+#     if dividends:
+#         for row in dividends:
+#             try:
+#                 if row[1] is not None:
+#                     dividends_dict[row[0]] = Decimal(row[1]).quantize(
+#                         Decimal('0.01'),
+#                         rounding=ROUND_HALF_UP
+#                     )
+#             except TypeError:
+#                 pass
+#
+#     return dividends_dict
+
+
+def get_dividends(datum_api_url: str,
+                  review_date_str: Union[datetime.date, str],
+                  service_auth0_token: str,
+                  dvd_type: str = None
+                  ) -> dict:
+    """Return dict of {str: decimal}"""
+
+    params = {
+        'start_date': review_date_str,
+        'end_date': review_date_str,
+    }
+    if dvd_type:
+        params['dvd_type'] = dvd_type
+
+    list_of_dicts = datum_api_request(
+        url=f'{datum_api_url}/dvd/',
+        service_auth0_token=service_auth0_token,
+        params=params
+    )
+
+    return {
+        row['ticker']: Decimal(row['amount']).quantize(
+            Decimal('0.01'),
+            rounding=ROUND_HALF_UP
+        ) for row in list_of_dicts
+    }
 
 
 def get_stock_dividends(db_creds, review_date_str: Union[datetime.date, str]):
@@ -263,7 +423,7 @@ def get_stock_dividends(db_creds, review_date_str: Union[datetime.date, str]):
           SELECT ticker_by_esignal, amount, ex_date
           FROM tickers_by_company t
           LEFT JOIN dvd ON t.id = dvd.id_ticker     
-          WHERE ex_date = '{review_date_str}'  
+          WHERE ex_date = '{review_date_str}'
           AND id_dvd_type = 46;
         """,
         dbp=db_creds
@@ -386,7 +546,6 @@ def get_average_daily_volume(db_creds, ticker_names_tuple: Tuple[str], effective
 
 
 def get_close_price(db_creds, date, ticker):
-
     query = f"""
                 SELECT ticker_by_esignal as ticker, date, clo as close_price
                 FROM tickers_by_company t
@@ -399,22 +558,57 @@ def get_close_price(db_creds, date, ticker):
     return touch_db_with_dict_response(query=query, dbp=db_creds)
 
 
+def get_close_price__(datum_api_url: str,
+                    service_auth0_token: str,
+                    date: Union[str, datetime.date],
+                    ticker: str = None) -> dict:
+    params = {'date_as_of_str': date}
+    if ticker:
+        params['ticker'] = ticker
+
+    list_of_dicts = datum_api_request(
+        url=f'{datum_api_url}/calculations/avg_daily_value_traded_3m',
+        service_auth0_token=service_auth0_token,
+        params=params
+    )
+
+    return {row['ticker']: row['value'] for row in list_of_dicts}
+
+
 # Tier System:
-def get_adv(db_creds, date=None):
-    if not date:
-        date = get_current_datetime().date()
+# def get_adv(db_creds, date=None):
+#     if not date:
+#         date = get_current_datetime().date()
+#
+#     query = """
+#         SELECT ticker_by_esignal as ticker, round(avg(volume),2) as adv
+#         FROM tickers_by_company t
+#         JOIN day d ON d.id_ticker = t.id
+#         JOIN exchange e ON e.id = t.id_exchange
+#         JOIN country c ON c.id = e.id_country AND c.name = 'UNITED STATES'
+#         WHERE date between '%s'::date-90 and '%s' AND active
+#         group by t.ticker_by_esignal
+#     """ % (date, date)
+#
+#     return touch_db_with_dict_response(query=query, dbp=db_creds)
 
-    query = """
-        SELECT ticker_by_esignal as ticker, round(avg(volume),2) as adv
-        FROM tickers_by_company t
-        JOIN day d ON d.id_ticker = t.id
-        JOIN exchange e ON e.id = t.id_exchange
-        JOIN country c ON c.id = e.id_country AND c.name = 'UNITED STATES'
-        WHERE date between '%s'::date-90 and '%s' AND active
-        group by t.ticker_by_esignal
-    """ % (date, date)
 
-    return touch_db_with_dict_response(query=query, dbp=db_creds)
+def get_adv(datum_api_url: str,
+            date_as_of: Union[str, datetime.date],
+            service_auth0_token: str) -> dict:
+    """Return dict of {str: decimal}"""
+    if not date_as_of:
+        date_as_of = get_current_datetime().date()  # TODO: check if it's correct (maybe use previous workday here?)
+        if not is_working_day(date_as_of):
+            date_as_of = get_previous_workday(date_as_of)
+
+    list_of_dicts = datum_api_request(
+        url=f'{datum_api_url}/calculations/avg_daily_value_traded_3m',
+        service_auth0_token=service_auth0_token,
+        params={'date_as_of_str': date_as_of}
+    )
+
+    return {row['ticker']: row['value'] for row in list_of_dicts}
 
 
 def get_high_low(db_creds, date=None):
