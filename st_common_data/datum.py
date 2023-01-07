@@ -131,13 +131,13 @@ def api_get_dividends(datum_api_url: str,
 
 
 def api_get_adv(datum_api_url: str,
-                date_as_of: Union[str, datetime.date],
-                service_auth0_token: str) -> dict:
+                service_auth0_token: str,
+                date_as_of: Union[str, datetime.date] = None) -> dict:
     """Return dict of {str: decimal}"""
     if not date_as_of:
         date_as_of = get_previous_workday(get_current_datetime().date())
-        if not is_working_day(date_as_of):
-            date_as_of = get_previous_workday(date_as_of)
+    elif not is_working_day(date_as_of):
+        date_as_of = get_previous_workday(date_as_of)
 
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/calculations/avg_daily_value_traded_3m',
@@ -150,8 +150,11 @@ def api_get_adv(datum_api_url: str,
 
 def api_get_close_price(datum_api_url: str,
                         service_auth0_token: str,
-                        date: Union[str, datetime.date],
+                        date: Union[str, datetime.date] = None,
                         ticker: str = None) -> dict:
+    if not date:
+        date = get_current_datetime().date()
+
     params = {'start_date': date, 'end_date': date, 'chart_type': 'ohlc'}
     if ticker:
         params['ticker'] = ticker
@@ -182,7 +185,7 @@ def api_get_tickers_sector(datum_api_url: str,
 
 def api_get_avg_pre_mh_vol(datum_api_url: str,
                            service_auth0_token: str,
-                           date: datetime.date) -> List[dict]:
+                           date: datetime.date = None) -> List[dict]:
     if not date:
         date = get_current_datetime().date()
 
@@ -206,7 +209,10 @@ def api_get_country_list(datum_api_url: str,
 
 def api_get_atr(datum_api_url: str,
                 service_auth0_token: str,
-                date: datetime.date) -> Dict[str, float]:
+                date: datetime.date = None) -> Dict[str, float]:
+    if not date:
+        date = get_previous_workday(get_current_datetime().date())
+
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/calculations/volatility_20d',
         service_auth0_token=service_auth0_token,
