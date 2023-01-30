@@ -185,15 +185,16 @@ def api_get_tickers_sector(datum_api_url: str,
 
 def api_get_avg_pre_mh_vol(datum_api_url: str,
                            service_auth0_token: str,
-                           date: datetime.date = None) -> List[dict]:
+                           date: datetime.date = None) -> dict:
     if not date:
         date = get_current_datetime().date()
 
-    return datum_api_get_request(
+    list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/calculations/avg_premarket_volume_90d',
         service_auth0_token=service_auth0_token,
         params={'date_as_of': date}
     )
+    return {row['ticker']: row['value'] for row in list_of_dicts}
 
 
 def api_get_country_list(datum_api_url: str,
