@@ -135,14 +135,15 @@ def api_get_adv(datum_api_url: str,
                 date_as_of: Union[str, datetime.date] = None) -> dict:
     """Return dict of {str: decimal}"""
     if not date_as_of:
-        date_as_of = get_previous_workday(get_current_datetime().date())
-    elif not is_working_day(date_as_of):
+        date_as_of = get_current_datetime().date()
+
+    if not is_working_day(date_as_of):
         date_as_of = get_previous_workday(date_as_of)
 
     list_of_dicts = datum_api_get_request(
-        url=f'{datum_api_url}/calculations/avg_daily_value_traded_3m',
+        url=f'{datum_api_url}/calculations/avg_daily_volume_90d',
         service_auth0_token=service_auth0_token,
-        params={'date_as_of_str': date_as_of}
+        params={'date_as_of': date_as_of}
     )
 
     return {row['ticker']: row['value'] for row in list_of_dicts}
@@ -153,7 +154,7 @@ def api_get_close_price(datum_api_url: str,
                         date: Union[str, datetime.date] = None,
                         ticker: str = None) -> dict:
     if not date:
-        date = get_current_datetime().date()
+        date = get_previous_workday()
 
     params = {'start_date': date, 'end_date': date, 'chart_type': 'ohlc'}
     if ticker:
@@ -198,7 +199,7 @@ def api_get_avg_pre_mh_vol(datum_api_url: str,
 
 
 def api_get_country_list(datum_api_url: str,
-                         service_auth0_token: str,) -> List[str]:
+                         service_auth0_token: str, ) -> List[str]:
     tickers_data = datum_api_get_request(
         url=f'{datum_api_url}/tickers',
         service_auth0_token=service_auth0_token,
@@ -212,7 +213,7 @@ def api_get_atr(datum_api_url: str,
                 service_auth0_token: str,
                 date: datetime.date = None) -> Dict[str, float]:
     if not date:
-        date = get_previous_workday(get_current_datetime().date())
+        date = get_previous_workday()
 
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/calculations/volatility_20d',
@@ -224,7 +225,7 @@ def api_get_atr(datum_api_url: str,
 
 
 # --------------------- End of Queries to Datum API ---------------------
-# 
+#
 # --------------------- Queries to Datum database: ---------------------
 
 
