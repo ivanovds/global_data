@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
+from django.core.exceptions import FieldDoesNotExist
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework.decorators import action
@@ -7,6 +8,7 @@ from rest_framework.response import Response
 
 from st_common_data.auth.django_auth import Auth0ServiceAuthentication
 from st_common_data.auth.serializers import Auth0NewUserSerializer, NewUserResponseSerializer
+from st_common_data.utils.common import get_current_kyiv_datetime
 
 UserModel = get_user_model()
 
@@ -62,10 +64,20 @@ class Auth0ViewSet(GenericViewSet):
                 user.auth0 = auth0_id
                 user.save()
             except UserModel.DoesNotExist:
-                user = UserModel.objects.create_user(
-                    username=email,
-                    email=email,
-                    auth0=auth0_id)
+                user_data = {
+                    'username': email,
+                    'email': email,
+                    'auth0': auth0_id
+                }
+
+                try:  # specify first_work_day if this filed exists in UserModel
+                    UserModel._meta.get_field('first_work_day')
+                    today = get_current_kyiv_datetime().date()
+                    user_data['first_work_day'] = today
+                except FieldDoesNotExist:
+                    pass
+
+                user = UserModel.objects.create_user(**user_data)
 
             response_serializer = self.serializer_class(user)
             return Response(response_serializer.data)
