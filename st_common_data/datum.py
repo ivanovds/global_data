@@ -198,6 +198,21 @@ def api_get_avg_pre_mh_vol(datum_api_url: str,
     return {row['ticker']: row['value'] for row in list_of_dicts}
 
 
+def api_get_pre_mh_volume(datum_api_url: str,
+                          service_auth0_token: str,
+                          date: datetime.date = None) -> dict:
+    if not date:
+        date = get_previous_workday()
+
+    list_of_dicts = datum_api_get_request(
+        url=f'{datum_api_url}/daily/pre_mh_volume',
+        service_auth0_token=service_auth0_token,
+        params={'start_date': date, 'end_date': date}
+    )
+    return {row['t']: row['pre_v'] for row in list_of_dicts}
+
+
+
 def api_get_country_list(datum_api_url: str,
                          service_auth0_token: str, ) -> List[str]:
     tickers_data = datum_api_get_request(
