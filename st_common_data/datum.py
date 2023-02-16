@@ -6,7 +6,7 @@ import requests
 import json
 
 from st_common_data.utils.common import (
-    touch_db_with_dict_response, touch_db,
+    touch_db_with_dict_response, touch_db, get_next_workday,
     get_current_datetime, is_working_day, get_previous_workday,
 )
 
@@ -44,6 +44,21 @@ def datum_api_get_request(url: str,
         err_msg = f'Unable to make Datum API request: {api_response.text}'
         logger.error(err_msg)
         raise Exception(err_msg)
+
+
+def processing_list_of_dicts(list_of_dicts: List[Dict], key: str) -> Dict[str, Dict]:
+    """
+        Convert list of dicts to dict of dicts by custom key
+       Args:
+           list_of_dicts (list): list of dicts
+           key (str): custom(target) key
+       """
+    result = {}
+    for row_dict in list_of_dicts:
+        ticker_name = row_dict.pop(key)
+        result[ticker_name] = row_dict
+
+    return result
 
 
 def api_get_last_n_candles_by_ticker(datum_api_url: str,
@@ -212,13 +227,61 @@ def api_get_pre_mh_volume(datum_api_url: str,
     return {row['t']: row['pre_v'] for row in list_of_dicts}
 
 
+def api_get_tickers_general_data(datum_api_url: str,
+                                 service_auth0_token: str,
+                                 is_active: bool = False,
+                                 is_country: bool = True,
+                                 is_equity_type: bool = False,
+                                 is_lvl1: bool = False,
+                                 is_lvl2: bool = False,
+                                 is_lvl3: bool = False,
+                                 is_lvl4: bool = False,
+                                 is_lvl5: bool = False,
+                                 is_exchange: bool = False) -> Dict[str, Dict]:
+    """
+        Return dict of tickers with their selected data
+        Args:
+            datum_api_url str: host name of Datum API
+            service_auth0_token str: auth0 serve token
+            is_active bool: is ticker activity will be in result
+            is_country bool: is country of ticker will be in result
+            is_equity_type bool: is equity_type of ticker will be in result
+            is_lvl1 bool: is this level will be in result
+            is_lvl2 bool: is this level will be in result
+            is_lvl3 bool: is this level will be in result
+            is_lvl4 bool: is this level will be in result
+            is_lvl5 bool: is this level will be in result
+            is_exchange bool: is exchange of ticker will be in result
+        Returns:
+            example:
+                {'AAPL': {'country': 'USA', 'lvl1': 'Banking'}}
+    """
+    kwargs = locals()
+
+    active_params_list = []
+    for param, value in kwargs.items():
+        try:
+            field = param.split('is_')[1]
+            if value:
+                active_params_list.append(field)
+        except IndexError:
+            pass
+
+    response = datum_api_get_request(
+        url=f'{datum_api_url}/tickers',
+        service_auth0_token=service_auth0_token,
+        params={'only_active': False, 'fields': ','.join(active_params_list)}
+    )
+
+    return processing_list_of_dicts(response, key='ticker')
+
 
 def api_get_country_list(datum_api_url: str,
-                         service_auth0_token: str, ) -> List[str]:
+                         service_auth0_token: str) -> List[str]:
     tickers_data = datum_api_get_request(
         url=f'{datum_api_url}/tickers',
         service_auth0_token=service_auth0_token,
-        params={}
+        params={'fields': 'country'}
     )
     unique_countries = set([row['country'] for row in tickers_data])
     return list(unique_countries)
@@ -237,6 +300,157 @@ def api_get_atr(datum_api_url: str,
     )
 
     return {row['ticker']: row['value'] for row in list_of_dicts}
+
+
+def api_get_etf_tickers(datum_api_url: str,
+                        service_auth0_token: str) -> List[str]:
+    """
+        Return list of ETF tickers
+    """
+
+    response = datum_api_get_request(
+        url=f'{datum_api_url}/tickers/etf',
+        service_auth0_token=service_auth0_token
+    )
+
+    return response
+
+
+def api_get_tickers_daily_data(datum_api_url: str,
+                               service_auth0_token: str,
+                               str_date: str,
+                               is_close: bool = True,
+                               is_open: bool = True,
+                               is_high: bool = True,
+                               is_low: bool = True,
+                               is_volume: bool = True) -> Dict[str, Dict]:
+    """
+        Return dict of tickers with their selected data
+        Args:
+            datum_api_url str: host name of Datum API
+            service_auth0_token str: auth0 serve token
+            str_date str: target date
+            is_close bool: is ticker activity will be in result
+            is_open bool: is country of ticker will be in result
+            is_high bool: is equity_type of ticker will be in result
+            is_low bool: is this level will be in result
+            is_volume bool: is this level will be in result
+        Returns:
+            example:
+                {'AAPL': {'c': 456.09, 'o': 342.56, 'v': 124552}}
+    """
+    kwargs = locals()
+    abbreviations = {
+        'open': 'o',
+        'close': 'c',
+        'high': 'h',
+        'low': 'l',
+        'volume': 'v',
+    }
+
+    next_workday = get_next_workday(
+        datetime.datetime.strptime(
+            kwargs.pop('str_date'),
+            '%Y-%m-%d'
+        ).date()
+    )
+
+    active_params_list = []
+    for param, value in kwargs.items():
+        try:
+            field = param.split('is_')[1]
+            if value:
+                active_params_list.append(abbreviations[field])
+        except IndexError:
+            pass
+
+    response = datum_api_get_request(
+        url=f'{datum_api_url}/daily/prev_date',
+        service_auth0_token=service_auth0_token,
+        params={'chart_type': ''.join(active_params_list), 'date': str(next_workday)}
+    )
+
+    return processing_list_of_dicts(response, key='ticker')
+
+
+def api_get_volumes(datum_api_url: str,
+                    service_auth0_token: str,
+                    date_from: datetime.date,
+                    date_to: datetime.date,
+                    ticker: str,
+                    interval: int = 15) -> Dict[str, Dict]:
+    """
+        Return dict of tickers with their volumes per interval
+        Args:
+            datum_api_url str: host name of Datum API
+            service_auth0_token str: auth0 serve token
+            date_from str or date: start date range
+            date_to str or date: end date range
+            ticker str or date: end date range
+        Returns:
+            example:
+                {'2022-12-01 04:00:00': {'v': 456.09}}
+    """
+    result = {}
+    while date_from <= date_to:
+        intermediate_date = date_from + datetime.timedelta(days=89)  # endpoint returns data only for 90 days
+        if intermediate_date > date_to:
+            intermediate_date = date_to
+
+        response = datum_api_get_request(
+            url=f'{datum_api_url}/intraday',
+            service_auth0_token=service_auth0_token,
+            params={
+                'start_datetime': f'{date_from} 00:00:00',
+                'end_datetime': f'{intermediate_date} 23:59:59',
+                'ticker': ticker,
+                'interval': interval,
+                'chart_type': 'v'
+            }
+        )
+
+        result.update(processing_list_of_dicts(response, key='dt'))
+
+        date_from = intermediate_date + datetime.timedelta(days=1)
+
+    return result
+
+
+def api_get_closes_opens(datum_api_url: str,
+                         service_auth0_token: str,
+                         date_from: datetime.date,
+                         date_to: datetime.date) -> List[Dict]:
+    """
+        Return dict of tickers with their closes and opens
+        Args:
+            datum_api_url str: host name of Datum API
+            service_auth0_token str: auth0 serve token
+            date_from str or date: start date range
+            date_to str or date: end date range
+        Returns:
+            example:
+                {'2022-12-01 04:00:00': {'v': 456.09}}
+    """
+    result = []
+    while date_from <= date_to:
+        intermediate_date = date_from + datetime.timedelta(days=29)  # endpoint returns data only for 30 days
+        if intermediate_date > date_to:
+            intermediate_date = date_to
+
+        result.extend(
+            datum_api_get_request(
+                url=f'{datum_api_url}/opg_and_clo',
+                service_auth0_token=service_auth0_token,
+                params={
+                    'start_date': f'{date_from}',
+                    'end_date': f'{intermediate_date}'
+                }
+            )
+        )
+
+        date_from = intermediate_date + datetime.timedelta(days=1)
+
+    return result
 
 
 # --------------------- End of Queries to Datum API ---------------------
