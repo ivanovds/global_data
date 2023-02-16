@@ -391,6 +391,9 @@ def api_get_volumes(datum_api_url: str,
             example:
                 {'2022-12-01 04:00:00': {'v': 456.09}}
     """
+    if date_from > date_to:
+        raise Exception(f'date_from should be less than date_to! (date_from={date_from}, date_to={date_to})')
+
     result = {}
     while date_from <= date_to:
         intermediate_date = date_from + datetime.timedelta(days=89)  # endpoint returns data only for 90 days
@@ -431,6 +434,9 @@ def api_get_closes_opens(datum_api_url: str,
             example:
                 {'2022-12-01 04:00:00': {'v': 456.09}}
     """
+    if date_from > date_to:
+        raise Exception(f'date_from should be less than date_to! (date_from={date_from}, date_to={date_to})')
+
     result = []
     while date_from <= date_to:
         intermediate_date = date_from + datetime.timedelta(days=29)  # endpoint returns data only for 30 days
@@ -451,6 +457,13 @@ def api_get_closes_opens(datum_api_url: str,
         date_from = intermediate_date + datetime.timedelta(days=1)
 
     return result
+
+
+def api_get_ptp_tickers(datum_api_url: str, service_auth0_token: str):
+    return datum_api_get_request(
+        url=f'{datum_api_url}/tickers/sorters/ptp',
+        service_auth0_token=service_auth0_token
+    )
 
 
 # --------------------- End of Queries to Datum API ---------------------
