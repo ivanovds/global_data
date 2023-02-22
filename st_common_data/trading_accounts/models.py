@@ -63,6 +63,11 @@ class TradingAccount(FIDAbstract):
         null=True, blank=True, default=None,
         related_name='owner_user')
 
+    first_user = models.ForeignKey(
+        UserModel, on_delete=models.PROTECT,
+        null=True, blank=True, default=None,
+        related_name='first_owner')
+
     account = models.CharField(
         unique=True,
         max_length=255)
