@@ -94,6 +94,9 @@ class TradingAccount(FIDAbstract):
     service_start_date = models.DateField(
         null=True, blank=True, default=None,
         verbose_name='Service account start operation')
+    personal_status = models.BooleanField(
+        default=False,
+        verbose_name='Is personal account')
 
     created_by = models.ForeignKey(
         UserModel, on_delete=models.PROTECT,
