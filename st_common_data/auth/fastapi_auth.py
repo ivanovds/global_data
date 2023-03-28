@@ -1,4 +1,6 @@
 import json
+import os
+import pickle
 from dataclasses import dataclass
 import datetime
 from typing import Optional
@@ -15,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.dependencies import get_db
 from app.settings import config
 UserModel = getattr(app.models, config.AUTH_USER_MODEL)  # in tier_system AUTH_USER_MODEL="UserDataModel"
-from . import SingletonMeta
+from . import SingletonMeta, SERVICE_TOKEN_FILENAME
 
 
 class JWKS(metaclass=SingletonMeta):
@@ -217,6 +219,7 @@ class ServiceAuth0Token(metaclass=SingletonMeta):
         token_data = self._get_token()
         self._token = token_data['access_token']
         self.expire = datetime.datetime.now() + datetime.timedelta(seconds=token_data['expires_in'] - 10)
+        create_or_update_token_file(obj_to_set=self)
 
     def _get_token(self, retry: int = 2):
         response = requests.post(
@@ -244,9 +247,35 @@ class ServiceAuth0Token(metaclass=SingletonMeta):
         return self.token
 
 
-service_auth0_token = ServiceAuth0Token(
-    audience=config.auth0_oa_api_audience,
-    grant_type='client_credentials',
-    client_id=config.auth0_service_client_id,
-    client_secret=config.auth0_service_client_secret,
-    services_token_url=config.auth0_service_token_url)
+def create_or_update_token_file(obj_to_set: ServiceAuth0Token = None) -> None:
+    if obj_to_set is None:
+        obj_to_set = ServiceAuth0Token(
+            audience=config.auth0_oa_api_audience,
+            grant_type='client_credentials',
+            client_id=config.auth0_service_client_id,
+            client_secret=config.auth0_service_client_secret,
+            services_token_url=config.auth0_service_token_url)
+
+    obj_to_set.token  # Important! In order to set token before saving into file
+
+    with open(SERVICE_TOKEN_FILENAME, 'wb') as wb_handle:
+        pickle.dump(obj_to_set, wb_handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+def get_service_auth0_token(retry: int = 0) -> ServiceAuth0Token:
+    if retry > 2:
+        raise Exception('Failed to get_service_auth0_token after several retries')
+
+    if not os.path.exists(SERVICE_TOKEN_FILENAME):
+        create_or_update_token_file()
+
+    with open(SERVICE_TOKEN_FILENAME, 'rb') as rb_handle:
+        try:
+            token = pickle.load(rb_handle)
+        except:
+            os.remove(SERVICE_TOKEN_FILENAME)
+            token = get_service_auth0_token(retry=retry + 1)
+    return token
+
+
+service_auth0_token = get_service_auth0_token()
