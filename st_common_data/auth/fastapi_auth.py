@@ -1,3 +1,4 @@
+import importlib
 import json
 import os
 import pickle
@@ -16,7 +17,10 @@ from sqlalchemy.orm import Session
 
 from app.dependencies import get_db
 from app.settings import config
-UserModel = getattr(app.models, config.AUTH_USER_MODEL)  # in tier_system AUTH_USER_MODEL="UserDataModel"
+
+UserModel = getattr(
+    importlib.import_module('app.models'), config.auth_user_model
+)  # in tier_system AUTH_USER_MODEL="UserDataModel"
 from . import SingletonMeta, SERVICE_TOKEN_FILENAME
 
 
