@@ -9,3 +9,4 @@ class SingletonMeta(type):
 
 
 SERVICE_TOKEN_FILENAME = 'service_auth0_token.pickle'  # should be added to .gitignore
+MANAGEMENT_TOKEN_FILENAME = 'management_auth0_token.pickle'  # should be added to .gitignore
