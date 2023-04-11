@@ -3,7 +3,7 @@ import json
 import datetime
 import os
 import pickle
-from typing import Optional
+from typing import Optional, Union
 from urllib.request import urlopen
 
 import requests
@@ -14,7 +14,7 @@ from rest_framework.exceptions import AuthenticationFailed
 import jose.exceptions
 from jose import jwt
 
-from . import SingletonMeta, SERVICE_TOKEN_FILENAME
+from . import SingletonMeta, SERVICE_TOKEN_FILENAME, MANAGEMENT_TOKEN_FILENAME
 
 UserModel = get_user_model()
 
@@ -189,6 +189,8 @@ class ServiceAuth0Token(metaclass=SingletonMeta):
     """
     Auth0 token from service app for machine-to-machine communication (between services)
     """
+    TOKEN_FILENAME = SERVICE_TOKEN_FILENAME
+
     def __init__(self,
                  audience: str,
                  grant_type: str,
@@ -213,7 +215,7 @@ class ServiceAuth0Token(metaclass=SingletonMeta):
         token_data = self._get_token()
         self._token = token_data['access_token']
         self.expire = datetime.datetime.now() + datetime.timedelta(seconds=token_data['expires_in'] - 10)
-        create_or_update_token_file(obj_to_set=self)
+        create_or_update_token_file(obj_to_set=self, token_filename=self.TOKEN_FILENAME)
 
     def _get_token(self, retry: int = 2):
         response = requests.post(
@@ -241,36 +243,54 @@ class ServiceAuth0Token(metaclass=SingletonMeta):
         return self.token
 
 
-def create_or_update_token_file(obj_to_set: ServiceAuth0Token = None) -> None:
+class ManagementAuth0Token(ServiceAuth0Token):
+    """
+    Auth0 token from management app for communication with auth0 API
+    """
+    TOKEN_FILENAME = MANAGEMENT_TOKEN_FILENAME
+
+
+def create_or_update_token_file(token_filename: str,
+                                obj_to_set: Union[ServiceAuth0Token, ManagementAuth0Token] = None) -> None:
     if obj_to_set is None:
-        obj_to_set = ServiceAuth0Token(
-            audience=settings.AUTH0_API_AUDIENCE,
-            grant_type='client_credentials',
-            client_id=settings.AUTH0_SERVICE_CLIENT_ID,
-            client_secret=settings.AUTH0_SERVICE_CLIENT_SECRET,
-            services_token_url=settings.AUTH0_SERVICE_TOKEN_URL)
+
+        if token_filename == SERVICE_TOKEN_FILENAME:
+            obj_to_set = ServiceAuth0Token(
+                audience=settings.AUTH0_API_AUDIENCE,
+                grant_type='client_credentials',
+                client_id=settings.AUTH0_SERVICE_CLIENT_ID,
+                client_secret=settings.AUTH0_SERVICE_CLIENT_SECRET,
+                services_token_url=settings.AUTH0_SERVICE_TOKEN_URL)
+        elif token_filename == MANAGEMENT_TOKEN_FILENAME:
+            obj_to_set = ManagementAuth0Token(
+                audience=f'https://{settings.AUTH0_DOMAIN}/api/v2/',
+                grant_type='client_credentials',
+                client_id=settings.AUTH0_MANAGEMENT_CLIENT_ID,
+                client_secret=settings.AUTH0_MANAGEMENT_CLIENT_SECRET,
+                services_token_url=settings.AUTH0_SERVICE_TOKEN_URL
+            )
 
     obj_to_set.token  # Important! In order to set token before saving into file
 
-    with open(SERVICE_TOKEN_FILENAME, 'wb') as wb_handle:
+    with open(token_filename, 'wb') as wb_handle:
         pickle.dump(obj_to_set, wb_handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
-def get_service_auth0_token(retry: int = 0) -> ServiceAuth0Token:
+def get_auth0_token(token_filename: str, retry: int = 0) -> Union[ServiceAuth0Token, ManagementAuth0Token]:
     if retry > 2:
         raise Exception('Failed to get_service_auth0_token after several retries')
 
-    if not os.path.exists(SERVICE_TOKEN_FILENAME):
-        create_or_update_token_file()
+    if not os.path.exists(token_filename):
+        create_or_update_token_file(token_filename=token_filename)
 
-    with open(SERVICE_TOKEN_FILENAME, 'rb') as rb_handle:
+    with open(token_filename, 'rb') as rb_handle:
         try:
             token = pickle.load(rb_handle)
         except:
-            os.remove(SERVICE_TOKEN_FILENAME)
-            token = get_service_auth0_token(retry=retry + 1)
+            os.remove(token_filename)
+            token = get_auth0_token(token_filename=token_filename, retry=retry + 1)
     return token
 
 
-service_auth0_token = get_service_auth0_token()
-
+service_auth0_token = get_auth0_token(token_filename=SERVICE_TOKEN_FILENAME)
+management_auth0_token = get_auth0_token(token_filename=MANAGEMENT_TOKEN_FILENAME)
