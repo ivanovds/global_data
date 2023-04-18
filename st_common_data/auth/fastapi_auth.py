@@ -273,11 +273,11 @@ def create_or_update_token_file(token_filename: str,
                 services_token_url=config.auth0_service_token_url)
         elif token_filename == MANAGEMENT_TOKEN_FILENAME:
             obj_to_set = ManagementAuth0Token(
-                audience=f'https://{config.auth0_domain}/api/v2/',
+                audience=config.auth0_management_api_audience,
                 grant_type='client_credentials',
                 client_id=config.auth0_management_client_id,
                 client_secret=config.auth0_management_client_secret,
-                services_token_url=config.auth0_service_token_url)
+                services_token_url=config.auth0_management_token_url)
 
     obj_to_set.token  # Important! In order to set token before saving into file
 
