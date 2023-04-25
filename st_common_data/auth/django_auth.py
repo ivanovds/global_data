@@ -81,6 +81,7 @@ class Auth0Authentication(authentication.BaseAuthentication):
     token provided in a request header.
     """
     www_authenticate_realm = 'api'
+    auth0_api_audience = settings.AUTH0_API_AUDIENCE
 
     def authenticate(self, request):
         header = self.get_header(request)
@@ -103,14 +104,13 @@ class Auth0Authentication(authentication.BaseAuthentication):
                 raw_token,
                 rsa_key,
                 algorithms=["RS256"],
-                audience=settings.AUTH0_API_AUDIENCE,
+                audience=self.auth0_api_audience,
                 issuer=f'https://{settings.AUTH0_DOMAIN}/')
         except jwt.ExpiredSignatureError:
             raise AuthenticationFailed(
                 detail='Token is expired')
         except jwt.JWTClaimsError:
-            raise AuthenticationFailed(
-                detail='Incorrect claims, please check the audience and issuer')
+            return None  # try another authentication instance
         except Exception:
             raise AuthenticationFailed(
                 detail='Unable to parse authentication header')
@@ -183,6 +183,21 @@ class Auth0ServiceAuthentication(Auth0Authentication):
             return ServiceUser()
         else:
             return None
+
+
+class Auth0CAPServiceAuthentication(Auth0ServiceAuthentication):
+    """
+    An authentication plugin for service auth (for CAP api).
+    """
+    auth0_api_audience = settings.AUTH0_CAP_API_AUDIENCE
+
+
+class Auth0CAPAuthentication(Auth0Authentication):
+    """
+    An authentication plugin that authenticates requests through a JSON web
+    token provided in a request header (for CAP api).
+    """
+    auth0_api_audience = settings.AUTH0_CAP_API_AUDIENCE
 
 
 class ServiceAuth0Token(metaclass=SingletonMeta):
