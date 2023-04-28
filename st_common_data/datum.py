@@ -4,6 +4,7 @@ from typing import Tuple, Union, List, Dict
 import datetime
 import requests
 import json
+from collections import defaultdict
 
 from st_common_data.utils.common import (
     touch_db_with_dict_response, touch_db, get_next_workday,
@@ -465,6 +466,37 @@ def api_get_ptp_tickers(datum_api_url: str, service_auth0_token: str):
         service_auth0_token=service_auth0_token
     )
 
+
+def api_get_tickers_changes(datum_api_url: str,
+                            service_auth0_token: str,
+                            start_eff_date: str,
+                            end_eff_date: str,
+                            ):
+    return datum_api_get_request(
+        url=f'{datum_api_url}/corporate_actions/ticker_changes',
+        service_auth0_token=service_auth0_token,
+        params={
+            'start_eff_date': start_eff_date,
+            'end_eff_date': end_eff_date
+        }
+    )
+
+
+def api_get_changed_tickers_per_date(datum_api_url: str,
+                                     service_auth0_token: str,
+                                     start_eff_date: str,
+                                     end_eff_date: str,
+                                     ):
+    ticker_changes = api_get_tickers_changes(datum_api_url=datum_api_url,
+                                             service_auth0_token=service_auth0_token,
+                                             start_eff_date=start_eff_date,
+                                             end_eff_date=end_eff_date)
+    response = defaultdict(list)
+    for row in ticker_changes:
+        response[row['eff_date']].append(row['old_ticker'])
+        response[row['eff_date']].append(row['new_ticker'])
+
+    return response
 
 # --------------------- End of Queries to Datum API ---------------------
 #
