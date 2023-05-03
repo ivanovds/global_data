@@ -498,6 +498,36 @@ def api_get_changed_tickers_per_date(datum_api_url: str,
 
     return response
 
+
+def api_get_auctions(datum_api_url: str,
+                     service_auth0_token: str,
+                     start_date: str,
+                     end_date: str,
+                     ticker: str = None,
+                     auction: str = None):
+    """
+        ticker: optional, in query params, if it is null, endpoint returns auctions of active US stocks,
+                but in this case max date range of auction data is 5 days
+        auction: optional, in query params, can be: open/close/reopen
+                 if empty, endpoint returns all of the above auctions
+    """
+
+    params = {
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+    if ticker is not None:
+        params.update({'ticker': ticker})
+    if auction is not None:
+        params.update({'auction': auction})
+
+    return datum_api_get_request(
+        url=f'{datum_api_url}/auctions',
+        service_auth0_token=service_auth0_token,
+        params=params
+    )
+
+
 # --------------------- End of Queries to Datum API ---------------------
 #
 # --------------------- Queries to Datum database: ---------------------
