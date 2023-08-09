@@ -292,15 +292,15 @@ def api_get_atr(datum_api_url: str,
                 service_auth0_token: str,
                 date: datetime.date = None) -> Dict[str, float]:
     if not date:
-        date = get_previous_workday()
+        date = get_current_datetime().date()
 
     list_of_dicts = datum_api_get_request(
-        url=f'{datum_api_url}/calculations/volatility_20d',
+        url=f'{datum_api_url}/calculations/avg_true_range_14d',
         service_auth0_token=service_auth0_token,
-        params={'date_as_of_str': date}
+        params={'date_as_of': date}
     )
 
-    return {row['ticker']: row['value'] for row in list_of_dicts}
+    return {row['ticker_by_esignal']: row['round'] for row in list_of_dicts}
 
 
 def api_get_etf_tickers(datum_api_url: str,
