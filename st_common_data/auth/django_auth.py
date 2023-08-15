@@ -200,6 +200,21 @@ class Auth0CAPAuthentication(Auth0Authentication):
     auth0_api_audience = settings.AUTH0_CAP_API_AUDIENCE
 
 
+class Auth0PineServiceAuthentication(Auth0ServiceAuthentication):
+    """
+    An authentication plugin for service auth (for pine_api).
+    """
+    auth0_api_audience = settings.AUTH0_PINE_API_AUDIENCE
+
+
+class Auth0PineAuthentication(Auth0Authentication):
+    """
+    An authentication plugin that authenticates requests through a JSON web
+    token provided in a request header (for pine_api).
+    """
+    auth0_api_audience = settings.AUTH0_PINE_API_AUDIENCE
+
+
 class ServiceAuth0Token(metaclass=SingletonMeta):
     """
     Auth0 token from service app for machine-to-machine communication (between services)
