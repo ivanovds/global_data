@@ -509,7 +509,7 @@ def api_get_auctions(datum_api_url: str,
         ticker: optional, in query params, if it is null, endpoint returns auctions of active US stocks,
                 but in this case max date range of auction data is 5 days
         auction: optional, in query params, can be: open/close/reopen
-                 if empty, endpoint returns all of the above auctions
+                 if empty, endpoint returns all of the above auction types
     """
 
     params = {
@@ -519,7 +519,7 @@ def api_get_auctions(datum_api_url: str,
     if ticker is not None:
         params.update({'ticker': ticker})
     if auction is not None:
-        params.update({'auction': auction})
+        params.update({'auction_type': auction})
 
     return datum_api_get_request(
         url=f'{datum_api_url}/auctions',
