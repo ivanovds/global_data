@@ -54,6 +54,16 @@ class TradingAccount(FIDAbstract):
         (PAUSED, 'PAUSED'),
     )
 
+    TAKION = 0
+    STERLING = 1
+    TRADING_APP = 2
+
+    PLATFORM_CHOICES = (
+        (TAKION, 'TAKION'),
+        (STERLING, 'STERLING'),
+        (TRADING_APP, 'TRADING_APP'),
+    )
+
     fid = models.IntegerField(
         unique=True,
         verbose_name='Foreign ID')
@@ -97,6 +107,9 @@ class TradingAccount(FIDAbstract):
     personal_status = models.BooleanField(
         default=False,
         verbose_name='Is personal account')
+    platform = models.PositiveSmallIntegerField(
+        null=True, blank=True, default=None,
+        choices=PLATFORM_CHOICES, verbose_name='Platform')
 
     created_by = models.ForeignKey(
         UserModel, on_delete=models.PROTECT,
