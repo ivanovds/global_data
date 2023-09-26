@@ -1,5 +1,5 @@
 __title__ = 'ST common data'
-__version__ = '0.2.8.4'
+__version__ = '0.2.8.5'
 __author__ = 'Ivanov Daniil'
 __license__ = 'MIT'
 

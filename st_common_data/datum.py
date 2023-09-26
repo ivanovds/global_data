@@ -111,10 +111,7 @@ def api_get_splits(datum_api_url: str,
     )
 
     return {
-        row['ticker']: Decimal(row['amount']).quantize(
-            Decimal('0.01'),
-            rounding=ROUND_HALF_UP
-        ) for row in list_of_dicts
+        row['ticker']: Decimal(row['amount']) for row in list_of_dicts
     }
 
 
@@ -139,10 +136,7 @@ def api_get_dividends(datum_api_url: str,
     )
 
     return {
-        row['ticker']: Decimal(row['amount']).quantize(
-            Decimal('0.01'),
-            rounding=ROUND_HALF_UP
-        ) for row in list_of_dicts
+        row['ticker']: Decimal(row['amount']) for row in list_of_dicts
     }
 
 
