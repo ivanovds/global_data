@@ -47,7 +47,7 @@ def datum_api_get_request(url: str,
         raise Exception(err_msg)
 
 
-def processing_list_of_dicts(list_of_dicts: List[Dict], key: str) -> Dict[str, Dict]:
+def processing_list_of_dicts(list_of_dicts: List[Dict], key: str, keys_to_replace: dict = None) -> Dict[str, Dict]:
     """
         Convert list of dicts to dict of dicts by custom key
        Args:
@@ -57,6 +57,10 @@ def processing_list_of_dicts(list_of_dicts: List[Dict], key: str) -> Dict[str, D
     result = {}
     for row_dict in list_of_dicts:
         ticker_name = row_dict.pop(key)
+        if keys_to_replace:
+            for old_key, new_key in keys_to_replace.items():
+                row_dict[new_key] = row_dict.pop(old_key)
+
         result[ticker_name] = row_dict
 
     return result
@@ -225,7 +229,7 @@ def api_get_pre_mh_volume(datum_api_url: str,
 def api_get_tickers_general_data(datum_api_url: str,
                                  service_auth0_token: str,
                                  is_active: bool = False,
-                                 is_country: bool = True,
+                                 is_country_hq: bool = True,
                                  is_equity_type: bool = False,
                                  is_lvl1: bool = False,
                                  is_lvl2: bool = False,
@@ -253,6 +257,10 @@ def api_get_tickers_general_data(datum_api_url: str,
     """
     kwargs = locals()
 
+    keys_to_replace = {
+        'country_hq': 'country'  # change "country_hq" to "country"
+    }
+
     active_params_list = []
     for param, value in kwargs.items():
         try:
@@ -268,7 +276,7 @@ def api_get_tickers_general_data(datum_api_url: str,
         params={'only_active': False, 'fields': ','.join(active_params_list)}
     )
 
-    return processing_list_of_dicts(response, key='ticker')
+    return processing_list_of_dicts(response, key='ticker', keys_to_replace=keys_to_replace)
 
 
 def api_get_country_list(datum_api_url: str,
@@ -276,9 +284,9 @@ def api_get_country_list(datum_api_url: str,
     tickers_data = datum_api_get_request(
         url=f'{datum_api_url}/tickers',
         service_auth0_token=service_auth0_token,
-        params={'fields': 'country'}
+        params={'fields': 'country_hq'}
     )
-    unique_countries = set([row['country'] for row in tickers_data])
+    unique_countries = set([row['country_hq'] for row in tickers_data])
     return list(unique_countries)
 
 
