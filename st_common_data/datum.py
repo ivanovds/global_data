@@ -530,6 +530,40 @@ def api_get_auctions(datum_api_url: str,
     )
 
 
+def api_get_holidays(datum_api_url: str,
+                     service_auth0_token: str,
+                     gte_date: str,
+                     lte_date: str):
+    params = {
+        "gte_date": gte_date,
+        "lte_date": lte_date,
+        "holiday_name": True
+    }
+
+    return datum_api_get_request(
+        url=f'{datum_api_url}/holidays',
+        service_auth0_token=service_auth0_token,
+        params=params
+    )
+
+
+def api_get_short_days(datum_api_url: str,
+                     service_auth0_token: str,
+                     gte_date: str,
+                     lte_date: str):
+    params = {
+        "gte_date": gte_date,
+        "lte_date": lte_date,
+        "short_day_name": True
+    }
+
+    return datum_api_get_request(
+        url=f'{datum_api_url}/short_days',
+        service_auth0_token=service_auth0_token,
+        params=params
+    )
+
+
 # --------------------- End of Queries to Datum API ---------------------
 #
 # --------------------- Queries to Datum database: ---------------------
