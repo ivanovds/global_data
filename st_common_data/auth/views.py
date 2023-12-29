@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
 from django.core.exceptions import FieldDoesNotExist
+from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import GenericViewSet, ModelViewSet
 from rest_framework.decorators import action
@@ -41,33 +42,38 @@ class Auth0ViewSet(GenericViewSet):
 
         serializer = Auth0NewUserSerializer(data=request.data)
         if serializer.is_valid():
+            user_data = serializer.validated_data['new_user']
             try:
-                user_id_list = serializer.validated_data['new_user']['user_id'].split('|')
+                user_id_list = user_data['user_id'].split('|')
                 auth_provider = user_id_list[0]
                 if auth_provider != 'auth0':
                     raise
                 auth0_id = user_id_list[1]
-                email = serializer.validated_data['new_user']['email']
+                email = user_data['email']
             except Exception:
                 raise ValidationError({'errors': [{'user_id': 'Invalid or missing user_id'}]})
 
             try:
-                user = UserModel.objects.get(auth0=auth0_id)
-
-                response_serializer = self.serializer_class(user)
-                return Response(response_serializer.data)
-            except UserModel.DoesNotExist:
-                pass
-
-            try:
-                user = UserModel.objects.get(email=email)
+                user = UserModel.objects.get(Q(email=email) | Q(auth0=auth0_id))
                 user.auth0 = auth0_id
+                user.email = email
+                user.username = email
+                user.first_name = user_data.get('first_name', user.first_name)
+                user.last_name = user_data.get('last_name', user.last_name)
+                user.first_name_en = user_data.get('first_name_en', user.first_name_en)
+                user.last_name_en = user_data.get('last_name_en', user.last_name_en)
+                user.hr_id = user_data.get('hr_id', user.hr_id)
                 user.save()
             except UserModel.DoesNotExist:
                 user_data = {
                     'username': email,
                     'email': email,
-                    'auth0': auth0_id
+                    'auth0': auth0_id,
+                    'first_name': user_data.get('first_name'),
+                    'last_name': user_data.get('last_name'),
+                    'first_name_en': user_data.get('first_name_en'),
+                    'last_name_en': user_data.get('last_name_en'),
+                    'hr_id': user_data.get('hr_id'),
                 }
 
                 try:  # specify first_work_day if this filed exists in UserModel
@@ -78,6 +84,9 @@ class Auth0ViewSet(GenericViewSet):
                     pass
 
                 user = UserModel.objects.create_user(**user_data)
+            except UserModel.MultipleObjectsReturned:
+                raise ValidationError({'errors': f'There are more then one user '
+                                                 f'with email {email} and auth0_id {auth0_id}'})
 
             response_serializer = self.serializer_class(user)
             return Response(response_serializer.data)
