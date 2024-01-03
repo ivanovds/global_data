@@ -6,10 +6,8 @@ import requests
 import json
 from collections import defaultdict
 
-from st_common_data.utils.common import (
-    touch_db_with_dict_response, touch_db, get_next_workday,
-    get_current_datetime, is_working_day, get_previous_workday,
-)
+from st_common_data.utils import common
+
 
 logger = logging.getLogger(__name__)
 
@@ -149,10 +147,10 @@ def api_get_adv(datum_api_url: str,
                 date_as_of: Union[str, datetime.date] = None) -> dict:
     """Return dict of {str: decimal}"""
     if not date_as_of:
-        date_as_of = get_current_datetime().date()
+        date_as_of = common.get_current_datetime().date()
 
-    if not is_working_day(date_as_of):
-        date_as_of = get_previous_workday(date_as_of)
+    if not common.is_working_day(date_as_of):
+        date_as_of = common.get_previous_workday(date_as_of)
 
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/calculations/avg_daily_volume_90d',
@@ -168,7 +166,7 @@ def api_get_close_price(datum_api_url: str,
                         date: Union[str, datetime.date] = None,
                         ticker: str = None) -> dict:
     if not date:
-        date = get_previous_workday()
+        date = common.get_previous_workday()
 
     params = {'start_date': date, 'end_date': date, 'chart_type': 'ohlc'}
     if ticker:
@@ -202,7 +200,7 @@ def api_get_avg_pre_mh_vol(datum_api_url: str,
                            service_auth0_token: str,
                            date: datetime.date = None) -> dict:
     if not date:
-        date = get_current_datetime().date()
+        date = common.get_current_datetime().date()
 
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/calculations/avg_premarket_volume_90d',
@@ -216,7 +214,7 @@ def api_get_pre_mh_volume(datum_api_url: str,
                           service_auth0_token: str,
                           date: datetime.date = None) -> dict:
     if not date:
-        date = get_previous_workday()
+        date = common.get_previous_workday()
 
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/daily/pre_mh_volume',
@@ -294,7 +292,7 @@ def api_get_atr(datum_api_url: str,
                 service_auth0_token: str,
                 date: datetime.date = None) -> Dict[str, float]:
     if not date:
-        date = get_current_datetime().date()
+        date = common.get_current_datetime().date()
 
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/calculations/avg_true_range_14d',
@@ -351,7 +349,7 @@ def api_get_tickers_daily_data(datum_api_url: str,
         'volume': 'v',
     }
 
-    next_workday = get_next_workday(
+    next_workday = common.get_next_workday(
         datetime.datetime.strptime(
             kwargs.pop('str_date'),
             '%Y-%m-%d'
@@ -573,7 +571,7 @@ def get_datum_data_by_ticker(db_creds, ticker, review_date):
     """Return data as of previous work day"""
     review_date_str = review_date.strftime('%Y-%m-%d')
 
-    datum_data = touch_db(
+    datum_data = common.touch_db(
         '''
         with intervals as (
           select start::time, start::time + interval '5min' as end
@@ -610,7 +608,7 @@ def premarket_datum_is_ready(db_creds):
     """Check if current Premarket is ready in Datum DB"""
     is_ready = False
     try:
-        tickers_quantity = touch_db(
+        tickers_quantity = common.touch_db(
             '''
             select count(t.id)
             from tickers_by_company t
@@ -642,7 +640,7 @@ def get_tickers_sector(db_creds, ticker_names_tuple: Tuple[str]):
         else:
             ticker_names_str = str(ticker_names_tuple)
 
-        tickers_sectors = touch_db(
+        tickers_sectors = common.touch_db(
             """
                 SELECT bics_inline.lvl3, ticker_by_esignal
                 FROM tickers_by_company t
@@ -661,7 +659,7 @@ def get_tickers_sector(db_creds, ticker_names_tuple: Tuple[str]):
 
 # Frontend can make this request to Datum API by itself (in MSW: api/trader/sector_list/)
 def get_sector_list(db_creds, level=3):
-    response = touch_db(
+    response = common.touch_db(
         """
           SELECT DISTINCT lvl%s
           FROM bics_inline
@@ -680,7 +678,7 @@ def get_sector_list(db_creds, level=3):
 
 # Frontend can make this request to Datum API by itself (in MSW: api/trader/country_list/)
 def get_country_list(db_creds):
-    response = touch_db(
+    response = common.touch_db(
         """
           SELECT c.name
           FROM country c
@@ -698,7 +696,7 @@ def get_country_list(db_creds):
 
 
 def get_etf_list(db_creds):
-    response = touch_db(
+    response = common.touch_db(
         """
             SELECT  ticker_by_esignal
             FROM tickers_by_company t
@@ -720,7 +718,7 @@ def get_etf_list(db_creds):
 
 def get_splits(db_creds, review_date_str: Union[datetime.date, str]):
     """Return dict of {str: Decimal}"""
-    splits = touch_db(
+    splits = common.touch_db(
         f"""
           SELECT ticker_by_esignal, amount
           FROM tickers_by_company t
@@ -746,7 +744,7 @@ def get_splits(db_creds, review_date_str: Union[datetime.date, str]):
 
 
 def ticker_split_stock_dividend(db_creds, ticker, date):
-    split = touch_db(
+    split = common.touch_db(
         f"""
               SELECT ticker_by_esignal, amount
               FROM tickers_by_company t
@@ -768,7 +766,7 @@ def ticker_split_stock_dividend(db_creds, ticker, date):
 
 
 def get_reports(db_creds, review_date_str: Union[datetime.date, str]):
-    reports = touch_db(
+    reports = common.touch_db(
         f"""
         SELECT ticker_by_esignal, announcement_date, announcement_time
         FROM tickers_by_company t
@@ -793,7 +791,7 @@ def get_reports(db_creds, review_date_str: Union[datetime.date, str]):
 
 def get_dividends(db_creds, review_date_str: Union[datetime.date, str]):
     """Return dict of {str: Decimal}"""
-    dividends = touch_db(
+    dividends = common.touch_db(
         f"""
             SELECT ticker_by_esignal, round(SUM(amount)::numeric, 2)
             FROM tickers_by_company t
@@ -822,7 +820,7 @@ def get_dividends(db_creds, review_date_str: Union[datetime.date, str]):
 
 def get_stock_dividends(db_creds, review_date_str: Union[datetime.date, str]):
     """Return dict of {str: Decimal}"""
-    stock_dividends = touch_db(
+    stock_dividends = common.touch_db(
         f"""
           SELECT ticker_by_esignal, amount, ex_date
           FROM tickers_by_company t
@@ -872,7 +870,7 @@ def get_tickers_gap(db_creds, ticker_names_tuple: Tuple[str], tuple_of_str_dates
     else:
         dates_str = str(tuple_of_str_dates)
 
-    tickers_gap = touch_db(
+    tickers_gap = common.touch_db(
         f"""
           SELECT d.date, ticker_by_esignal,
           round(((d.open / d.prev_close - 1 ) * 100),2) gap
@@ -901,7 +899,7 @@ def get_average_pre_mh_volume(db_creds, ticker_names_tuple: Tuple[str], effectiv
     else:
         ticker_names_str = str(ticker_names_tuple)
 
-    db_response = touch_db(
+    db_response = common.touch_db(
         """
             SELECT ticker_by_esignal, round(avg(value),2)
             FROM tickers_by_company t
@@ -932,7 +930,7 @@ def get_average_daily_volume(db_creds, ticker_names_tuple: Tuple[str], effective
     else:
         ticker_names_str = str(ticker_names_tuple)
 
-    db_response = touch_db(
+    db_response = common.touch_db(
         """
             SELECT ticker_by_esignal, round(avg(volume),2)
             FROM tickers_by_company t
@@ -953,7 +951,7 @@ def get_average_daily_volume(db_creds, ticker_names_tuple: Tuple[str], effective
 # Tier System:
 def get_adv(db_creds, date=None):
     if not date:
-        date = get_current_datetime().date()
+        date = common.get_current_datetime().date()
 
     query = """
         SELECT ticker_by_esignal as ticker, round(avg(volume),2) as adv
@@ -965,12 +963,12 @@ def get_adv(db_creds, date=None):
         group by t.ticker_by_esignal
     """ % (date, date)
 
-    return touch_db_with_dict_response(query=query, dbp=db_creds)
+    return common.touch_db_with_dict_response(query=query, dbp=db_creds)
 
 
 def get_high_low(db_creds, date=None):
     if not date:
-        date = get_current_datetime().date()
+        date = common.get_current_datetime().date()
 
     query = """
             SELECT ticker_by_esignal as ticker, date, high, low
@@ -981,7 +979,7 @@ def get_high_low(db_creds, date=None):
             WHERE date = Holidays.get_prev_work_date('%s') AND c.name = 'UNITED STATES' AND active
         """ % date
 
-    return touch_db_with_dict_response(query=query, dbp=db_creds)
+    return common.touch_db_with_dict_response(query=query, dbp=db_creds)
 
 
 def get_close_price(db_creds, date, ticker):
@@ -994,12 +992,12 @@ def get_close_price(db_creds, date, ticker):
                 WHERE date = ('%s') AND active AND ticker_by_esignal = ('%s')
             """ % (date, ticker)
 
-    return touch_db_with_dict_response(query=query, dbp=db_creds)
+    return common.touch_db_with_dict_response(query=query, dbp=db_creds)
 
 
 def get_close_price_as_dict(db_creds, date=None):
     if not date:
-        date = get_current_datetime().date()
+        date = common.get_current_datetime().date()
 
     query = """
                 SELECT ticker_by_esignal, date, close
@@ -1009,13 +1007,13 @@ def get_close_price_as_dict(db_creds, date=None):
                 JOIN country c ON c.id = e.id_country AND c.name = 'UNITED STATES'
                 WHERE date = Holidays.get_prev_work_date('%s') AND active
             """ % date
-    list_of_dicts = touch_db_with_dict_response(query=query, dbp=db_creds)
+    list_of_dicts = common.touch_db_with_dict_response(query=query, dbp=db_creds)
     return {row['ticker_by_esignal']: row['close'] for row in list_of_dicts}
 
 
 def get_avg_pre_mh_vol(db_creds, date=None):
     if not date:
-        date = get_current_datetime().date()
+        date = common.get_current_datetime().date()
 
     query = """
                 SELECT ticker_by_esignal as ticker, round(avg(value),2) as avg_pre_mh_vol
@@ -1027,6 +1025,6 @@ def get_avg_pre_mh_vol(db_creds, date=None):
                 group by t.ticker_by_esignal    
             """ % (date, date)
 
-    return touch_db_with_dict_response(query=query, dbp=db_creds)
+    return common.touch_db_with_dict_response(query=query, dbp=db_creds)
 
 # --------------------- End of Queries to Datum database ---------------------

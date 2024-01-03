@@ -3,8 +3,23 @@ from psycopg2 import extras
 import datetime
 import pytz
 from decimal import Decimal, ROUND_HALF_UP
+from dateutil.relativedelta import relativedelta
 
-from st_common_data.nyse_holidays import NYSE_HOLIDAYS
+from st_common_data import datum
+
+try:
+    from app.settings import settings
+    from st_common_data.auth.fastapi_auth import service_auth0_token
+except ImportError:
+    from django.conf import settings
+    from st_common_data.auth.django_auth import service_auth0_token
+
+HOLIDAYS_LIST_CACHE = datum.api_get_holidays(
+        datum_api_url=settings.DATUM_API_URL,
+        service_auth0_token=service_auth0_token,
+        gte_date='2018-01-01',
+        lte_date=str((datetime.datetime.now() + relativedelta(years=2)).date())
+)
 
 
 def touch_db(query, dbp, params=None, save=False, returning=False, transaction=False):
@@ -67,8 +82,9 @@ def get_current_kyiv_datetime():
 
 
 def is_holiday(current_datetime):
-    for holiday in NYSE_HOLIDAYS:
-        if current_datetime.strftime("%d.%m.%Y") == holiday['date'] and (holiday['status'] == 'Closed'):
+    date_str = str(current_datetime.date())
+    for row in HOLIDAYS_LIST_CACHE:
+        if date_str == row['holiday_date']:
             return True
     return False
 
