@@ -69,10 +69,10 @@ class Auth0ViewSet(GenericViewSet):
                     'username': email,
                     'email': email,
                     'auth0': auth0_id,
-                    'first_name': user_data.get('first_name'),
-                    'last_name': user_data.get('last_name'),
-                    'first_name_en': user_data.get('first_name_en'),
-                    'last_name_en': user_data.get('last_name_en'),
+                    'first_name': user_data.get('first_name', ''),
+                    'last_name': user_data.get('last_name', ''),
+                    'first_name_en': user_data.get('first_name_en', ''),
+                    'last_name_en': user_data.get('last_name_en', ''),
                     'hr_id': user_data.get('hr_id'),
                 }
 
