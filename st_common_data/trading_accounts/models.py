@@ -64,6 +64,18 @@ class TradingAccount(FIDAbstract):
         (TRADING_APP, 'TRADING_APP'),
     )
 
+    TRAFIX = 0
+    LYNX = 1
+    STERLING = 2
+    EMULATOR = 3
+
+    ROUTING_CHOICES = (
+        (TRAFIX, 'TRAFIX'),
+        (LYNX, 'LYNX'),
+        (STERLING, 'STERLING'),
+        (EMULATOR, 'EMULATOR'),
+    )
+
     fid = models.IntegerField(
         unique=True,
         verbose_name='Foreign ID')
@@ -110,6 +122,9 @@ class TradingAccount(FIDAbstract):
     platform = models.PositiveSmallIntegerField(
         null=True, blank=True, default=None,
         choices=PLATFORM_CHOICES, verbose_name='Platform')
+    routing = models.PositiveSmallIntegerField(
+        null=True, blank=True, default=None,
+        choices=ROUTING_CHOICES, verbose_name='Routing')
 
     created_by = models.ForeignKey(
         UserModel, on_delete=models.PROTECT,
