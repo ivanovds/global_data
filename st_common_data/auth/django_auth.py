@@ -207,6 +207,13 @@ class Auth0PineServiceAuthentication(Auth0ServiceAuthentication):
     auth0_api_audience = settings.AUTH0_PINE_API_AUDIENCE
 
 
+class Auth0BackOfficeServiceAuthentication(Auth0ServiceAuthentication):
+    """
+    An authentication plugin for service auth (for bo_api).
+    """
+    auth0_api_audience = settings.AUTH0_BO_API_AUDIENCE
+
+
 class Auth0PineAuthentication(Auth0Authentication):
     """
     An authentication plugin that authenticates requests through a JSON web
