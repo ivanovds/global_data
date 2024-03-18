@@ -82,6 +82,7 @@ class Auth0Authentication(authentication.BaseAuthentication):
     """
     www_authenticate_realm = 'api'
     auth0_api_audience = settings.AUTH0_API_AUDIENCE
+    auth0_service_client_id = settings.AUTH0_SERVICE_CLIENT_ID
 
     def authenticate(self, request):
         header = self.get_header(request)
@@ -179,7 +180,7 @@ class Auth0ServiceAuthentication(Auth0Authentication):
     www_authenticate_realm = 'api'
 
     def get_user(self, claims):
-        if 'azp' in claims and claims['azp'] == settings.AUTH0_SERVICE_CLIENT_ID:
+        if 'azp' in claims and claims['azp'] == self.auth0_service_client_id:
             return ServiceUser()
         else:
             return None
@@ -190,6 +191,7 @@ class Auth0CAPServiceAuthentication(Auth0ServiceAuthentication):
     An authentication plugin for service auth (for CAP api).
     """
     auth0_api_audience = settings.AUTH0_CAP_API_AUDIENCE
+    auth0_service_client_id = settings.AUTH0_CAP_SERVICE_CLIENT_ID
 
 
 class Auth0CAPAuthentication(Auth0Authentication):
@@ -205,6 +207,7 @@ class Auth0PineServiceAuthentication(Auth0ServiceAuthentication):
     An authentication plugin for service auth (for pine_api).
     """
     auth0_api_audience = settings.AUTH0_PINE_API_AUDIENCE
+    auth0_service_client_id = settings.AUTH0_PINE_SERVICE_CLIENT_ID
 
 
 class Auth0BackOfficeServiceAuthentication(Auth0ServiceAuthentication):
@@ -212,6 +215,7 @@ class Auth0BackOfficeServiceAuthentication(Auth0ServiceAuthentication):
     An authentication plugin for service auth (for bo_api).
     """
     auth0_api_audience = settings.AUTH0_BO_API_AUDIENCE
+    auth0_service_client_id = settings.AUTH0_BO_SERVICE_CLIENT_ID
 
 
 class Auth0PineAuthentication(Auth0Authentication):
