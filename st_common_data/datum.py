@@ -460,11 +460,15 @@ def api_get_closes_opens(datum_api_url: str,
     return result
 
 
-def api_get_ptp_tickers(datum_api_url: str, service_auth0_token: str):
-    return datum_api_get_request(
-        url=f'{datum_api_url}/tickers/sorters/ptp',
+def api_get_ptp_tickers(datum_api_url: str, service_auth0_token: str) -> Dict[str, list]:
+    datum_response = datum_api_get_request(
+        url=f'{datum_api_url}/tickers/all_ptps',
         service_auth0_token=service_auth0_token
     )
+    tickers_by_sorter = defaultdict(list)
+    for row in datum_response:
+        tickers_by_sorter[row['sorter']].append(row['ticker'])
+    return tickers_by_sorter
 
 
 def api_get_tickers_changes(datum_api_url: str,
