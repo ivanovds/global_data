@@ -68,12 +68,16 @@ class TradingAccount(FIDAbstract):
     LYNX = 1
     STERLING = 2
     EMULATOR = 3
+    VELOCITY = 4
+    NON_SET = 5
 
     ROUTING_CHOICES = (
         (TRAFIX, 'TRAFIX'),
         (LYNX, 'LYNX'),
         (STERLING, 'STERLING'),
         (EMULATOR, 'EMULATOR'),
+        (VELOCITY, 'VELOCITY'),
+        (NON_SET, 'NON_SET'),
     )
 
     fid = models.IntegerField(
@@ -123,7 +127,7 @@ class TradingAccount(FIDAbstract):
         null=True, blank=True, default=None,
         choices=PLATFORM_CHOICES, verbose_name='Platform')
     routing = models.PositiveSmallIntegerField(
-        null=True, blank=True, default=None,
+        default=NON_SET,
         choices=ROUTING_CHOICES, verbose_name='Routing')
 
     created_by = models.ForeignKey(

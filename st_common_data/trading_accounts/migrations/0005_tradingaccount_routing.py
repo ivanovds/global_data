@@ -13,6 +13,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='tradingaccount',
             name='routing',
-            field=models.PositiveSmallIntegerField(blank=True, choices=[(0, 'TRAFIX'), (1, 'LYNX'), (2, 'STERLING'), (3, 'EMULATOR')], default=None, null=True, verbose_name='Routing'),
+            field=models.PositiveSmallIntegerField(
+                choices=[(0, 'TRAFIX'), (1, 'LYNX'), (2, 'STERLING'), (3, 'EMULATOR'), (4, 'VELOCITY'), (5, 'NON_SET')],
+                default=5, verbose_name='Routing'),
         ),
     ]
