@@ -129,6 +129,9 @@ class TradingAccount(FIDAbstract):
     routing = models.PositiveSmallIntegerField(
         default=NON_SET,
         choices=ROUTING_CHOICES, verbose_name='Routing')
+    bp_active = models.BooleanField(
+        default=False,
+        verbose_name='Does it have not zero BP')
 
     created_by = models.ForeignKey(
         UserModel, on_delete=models.PROTECT,
