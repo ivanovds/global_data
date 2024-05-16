@@ -566,6 +566,19 @@ def api_get_short_days(datum_api_url: str,
     )
 
 
+def api_get_median_opg_volume(datum_api_url: str,
+                              service_auth0_token: str,
+                              date: datetime.date = None) -> dict:
+    if not date:
+        date = common.get_current_datetime().date()
+
+    list_of_dicts = datum_api_get_request(
+        url=f'{datum_api_url}/calculations/median_opg_volume_20d',
+        service_auth0_token=service_auth0_token,
+        params={'date_as_of': date}
+    )
+    return {row['ticker']: row['value'] for row in list_of_dicts}
+
 # --------------------- End of Queries to Datum API ---------------------
 #
 # --------------------- Queries to Datum database: ---------------------
