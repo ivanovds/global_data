@@ -4,6 +4,7 @@ import datetime
 import pytz
 from decimal import Decimal, ROUND_HALF_UP
 from dateutil.relativedelta import relativedelta
+from typing import Union
 
 from st_common_data import datum
 
@@ -153,3 +154,78 @@ def convert_dict_keys_to_str(param_dict):
     return {str(k): v for k, v in param_dict.items()}
 
 
+def safe_divide(
+        a: Union[None, int, float, Decimal],
+        b: Union[None, int, float, Decimal]
+) -> Union[int, float, Decimal]:
+    """
+    Safe division of two numbers for preventing ZeroDivisionError and NoneType values
+
+    :param a: dividend
+    :param b: divisor
+    :return:
+    """
+    if any([a is None, b is None, b == 0]):
+        return 0
+    else:
+        return a / b
+
+
+def safe_add(*args):
+    all_none = True
+    result = 0
+    for arg in args:
+        if arg is not None:
+            all_none = False
+            result += arg
+    if all_none:
+        return None
+    else:
+        return result
+
+
+def safe_subtract(*args):
+    all_none = True
+    result = 0
+    for arg in args:
+        if arg is not None:
+            all_none = False
+            result -= arg
+    if all_none:
+        return None
+    else:
+        return result
+
+
+def get_last_thanksgiving_day():
+    """Fourth Thursday of November"""
+    month = 11
+    now = get_current_datetime()
+
+    # check current year:
+    cur_year = now.year
+    cur_year_thanksgiving_day = get_fourth_thursday(cur_year, month)
+
+    if cur_year_thanksgiving_day <= now.date():
+        return cur_year_thanksgiving_day
+    else:
+        return get_fourth_thursday(cur_year - 1, month)
+
+
+def get_previous_thanksgiving_day(rating_year=None):
+    """Fourth Thursday of November (year before rating_year)"""
+    if not rating_year:
+        rating_year = get_current_datetime().year
+
+    return get_fourth_thursday(rating_year - 1, 11)
+
+
+def get_fourth_thursday(year, month):
+    first_day = datetime.date(year, month, 1)
+
+    # go forward to the first Thursday
+    offset = 4 - first_day.isoweekday()
+    if offset < 0:
+        offset += 7  # go forward one week if necessary
+
+    return first_day + datetime.timedelta(days=offset) + datetime.timedelta(days=21)
