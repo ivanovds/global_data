@@ -70,12 +70,14 @@ def api_get_last_n_candles_by_ticker(datum_api_url: str,
                                      n_candles: int,
                                      interval: int = 5,
                                      unix_timestamp: int = None,
+                                     **kwargs
                                      ) -> List[dict]:
     params = {
         'ticker': ticker,
         'interval': interval,
         'n_candles': n_candles,
-        'unix_timestamp': unix_timestamp
+        'unix_timestamp': unix_timestamp,
+        **kwargs
     }
 
     list_of_dicts = datum_api_get_request(
@@ -89,12 +91,13 @@ def api_get_last_n_candles_by_ticker(datum_api_url: str,
 
 def api_get_reports(datum_api_url: str,
                     move_date_str: str,
-                    service_auth0_token: str) -> List[str]:
+                    service_auth0_token: str,
+                    **kwargs) -> List[str]:
     """Return list of tickers which have report event as of move_date_str"""
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/reports',
         service_auth0_token=service_auth0_token,
-        params={'move_date_str': move_date_str}
+        params={'move_date_str': move_date_str, **kwargs}
     )
 
     tickers_list = [row['ticker'] for row in list_of_dicts]
@@ -103,13 +106,14 @@ def api_get_reports(datum_api_url: str,
 
 def api_get_splits(datum_api_url: str,
                    review_date_str: Union[datetime.date, str],
-                   service_auth0_token: str
+                   service_auth0_token: str,
+                   **kwargs
                    ) -> dict:
     """Return dict of {str: decimal}"""
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/dvd/splits',
         service_auth0_token=service_auth0_token,
-        params={'date': review_date_str}
+        params={'date': review_date_str, **kwargs}
     )
 
     return {
@@ -120,7 +124,8 @@ def api_get_splits(datum_api_url: str,
 def api_get_dividends(datum_api_url: str,
                       review_date_str: Union[datetime.date, str],
                       service_auth0_token: str,
-                      dvd_type: str = 'cash'
+                      dvd_type: str = 'cash',
+                      **kwargs
                       ) -> dict:
     """Return dict of {str: decimal}"""
 
@@ -134,7 +139,7 @@ def api_get_dividends(datum_api_url: str,
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/{url_end}',
         service_auth0_token=service_auth0_token,
-        params={'date': review_date_str}
+        params={'date': review_date_str, **kwargs}
     )
 
     return {
@@ -164,11 +169,12 @@ def api_get_adv(datum_api_url: str,
 def api_get_close_price(datum_api_url: str,
                         service_auth0_token: str,
                         date: Union[str, datetime.date] = None,
-                        ticker: str = None) -> dict:
+                        ticker: str = None,
+                        **kwargs) -> dict:
     if not date:
         date = common.get_previous_workday()
 
-    params = {'start_date': date, 'end_date': date, 'chart_type': 'ohlc'}
+    params = {'start_date': date, 'end_date': date, 'chart_type': 'ohlc', **kwargs}
     if ticker:
         params['ticker'] = ticker
 
@@ -186,11 +192,12 @@ def api_get_close_price(datum_api_url: str,
 
 def api_get_tickers_sector(datum_api_url: str,
                            service_auth0_token: str,
-                           tickers: List[str]) -> dict:
+                           tickers: List[str],
+                           **kwargs) -> dict:
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/bics_sectors',
         service_auth0_token=service_auth0_token,
-        body_params={'tickers': tickers}
+        body_params={'tickers': tickers, **kwargs}
     )
 
     return {row['ticker']: row['lvl3'] for row in list_of_dicts}
@@ -198,28 +205,30 @@ def api_get_tickers_sector(datum_api_url: str,
 
 def api_get_avg_pre_mh_vol(datum_api_url: str,
                            service_auth0_token: str,
-                           date: datetime.date = None) -> dict:
+                           date: datetime.date = None,
+                           **kwargs) -> dict:
     if not date:
         date = common.get_current_datetime().date()
 
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/calculations/avg_premarket_volume_90d',
         service_auth0_token=service_auth0_token,
-        params={'date_as_of': date}
+        params={'date_as_of': date, **kwargs}
     )
     return {row['ticker']: row['value'] for row in list_of_dicts}
 
 
 def api_get_pre_mh_volume(datum_api_url: str,
                           service_auth0_token: str,
-                          date: datetime.date = None) -> dict:
+                          date: datetime.date = None,
+                          **kwargs) -> dict:
     if not date:
         date = common.get_previous_workday()
 
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/daily/pre_mh_volume',
         service_auth0_token=service_auth0_token,
-        params={'start_date': date, 'end_date': date}
+        params={'start_date': date, 'end_date': date, **kwargs}
     )
     return {row['t']: row['pre_v'] for row in list_of_dicts}
 
@@ -234,7 +243,8 @@ def api_get_tickers_general_data(datum_api_url: str,
                                  is_lvl3: bool = False,
                                  is_lvl4: bool = False,
                                  is_lvl5: bool = False,
-                                 is_exchange: bool = False) -> Dict[str, Dict]:
+                                 is_exchange: bool = False,
+                                 **kwargs) -> Dict[str, Dict]:
     """
         Return dict of tickers with their selected data
         Args:
@@ -271,18 +281,19 @@ def api_get_tickers_general_data(datum_api_url: str,
     response = datum_api_get_request(
         url=f'{datum_api_url}/tickers',
         service_auth0_token=service_auth0_token,
-        params={'only_active': False, 'fields': ','.join(active_params_list)}
+        params={'only_active': False, 'fields': ','.join(active_params_list), **kwargs}
     )
 
     return processing_list_of_dicts(response, key='ticker', keys_to_replace=keys_to_replace)
 
 
 def api_get_country_list(datum_api_url: str,
-                         service_auth0_token: str) -> List[str]:
+                         service_auth0_token: str,
+                         **kwargs) -> List[str]:
     tickers_data = datum_api_get_request(
         url=f'{datum_api_url}/tickers',
         service_auth0_token=service_auth0_token,
-        params={'fields': 'country_hq'}
+        params={'fields': 'country_hq', **kwargs}
     )
     unique_countries = set([row['country_hq'] for row in tickers_data])
     return list(unique_countries)
@@ -290,14 +301,15 @@ def api_get_country_list(datum_api_url: str,
 
 def api_get_atr(datum_api_url: str,
                 service_auth0_token: str,
-                date: datetime.date = None) -> Dict[str, float]:
+                date: datetime.date = None,
+                **kwargs) -> Dict[str, float]:
     if not date:
         date = common.get_current_datetime().date()
 
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/calculations/avg_true_range_14d',
         service_auth0_token=service_auth0_token,
-        params={'date_as_of': date}
+        params={'date_as_of': date, **kwargs}
     )
 
     return {row['ticker_by_esignal']: row['round'] for row in list_of_dicts}
@@ -324,7 +336,8 @@ def api_get_tickers_daily_data(datum_api_url: str,
                                is_open: bool = True,
                                is_high: bool = True,
                                is_low: bool = True,
-                               is_volume: bool = True) -> Dict[str, Dict]:
+                               is_volume: bool = True,
+                               **kwargs) -> Dict[str, Dict]:
     """
         Return dict of tickers with their selected data
         Args:
@@ -368,7 +381,7 @@ def api_get_tickers_daily_data(datum_api_url: str,
     response = datum_api_get_request(
         url=f'{datum_api_url}/daily/prev_date',
         service_auth0_token=service_auth0_token,
-        params={'chart_type': ''.join(active_params_list), 'date': str(next_workday)}
+        params={'chart_type': ''.join(active_params_list), 'date': str(next_workday), **kwargs}
     )
 
     return processing_list_of_dicts(response, key='ticker')
@@ -379,7 +392,8 @@ def api_get_volumes(datum_api_url: str,
                     date_from: datetime.date,
                     date_to: datetime.date,
                     ticker: str,
-                    interval: int = 15) -> Dict[str, Dict]:
+                    interval: int = 15,
+                    **kwargs) -> Dict[str, Dict]:
     """
         Return dict of tickers with their volumes per interval
         Args:
@@ -409,7 +423,8 @@ def api_get_volumes(datum_api_url: str,
                 'end_datetime': f'{intermediate_date} 23:59:59',
                 'ticker': ticker,
                 'interval': interval,
-                'chart_type': 'v'
+                'chart_type': 'v',
+                **kwargs
             }
         )
 
@@ -423,7 +438,8 @@ def api_get_volumes(datum_api_url: str,
 def api_get_closes_opens(datum_api_url: str,
                          service_auth0_token: str,
                          date_from: datetime.date,
-                         date_to: datetime.date) -> List[Dict]:
+                         date_to: datetime.date,
+                         **kwargs) -> List[Dict]:
     """
         Return dict of tickers with their closes and opens
         Args:
@@ -450,7 +466,8 @@ def api_get_closes_opens(datum_api_url: str,
                 service_auth0_token=service_auth0_token,
                 params={
                     'start_date': f'{date_from}',
-                    'end_date': f'{intermediate_date}'
+                    'end_date': f'{intermediate_date}',
+                    **kwargs
                 }
             )
         )
@@ -475,13 +492,14 @@ def api_get_tickers_changes(datum_api_url: str,
                             service_auth0_token: str,
                             start_eff_date: str,
                             end_eff_date: str,
-                            ):
+                            **kwargs):
     return datum_api_get_request(
         url=f'{datum_api_url}/corporate_actions/ticker_changes',
         service_auth0_token=service_auth0_token,
         params={
             'start_eff_date': start_eff_date,
-            'end_eff_date': end_eff_date
+            'end_eff_date': end_eff_date,
+            **kwargs
         }
     )
 
@@ -508,7 +526,8 @@ def api_get_auctions(datum_api_url: str,
                      start_date: str,
                      end_date: str,
                      ticker: str = None,
-                     auction: str = None):
+                     auction: str = None,
+                     **kwargs):
     """
         ticker: optional, in query params, if it is null, endpoint returns auctions of active US stocks,
                 but in this case max date range of auction data is 5 days
@@ -519,6 +538,7 @@ def api_get_auctions(datum_api_url: str,
     params = {
         'start_date': start_date,
         'end_date': end_date,
+        **kwargs
     }
     if ticker is not None:
         params.update({'ticker': ticker})
@@ -535,11 +555,13 @@ def api_get_auctions(datum_api_url: str,
 def api_get_holidays(datum_api_url: str,
                      service_auth0_token: str,
                      gte_date: str,
-                     lte_date: str):
+                     lte_date: str,
+                     **kwargs):
     params = {
         "gte_date": gte_date,
         "lte_date": lte_date,
-        "holiday_name": True
+        "holiday_name": True,
+        **kwargs
     }
 
     return datum_api_get_request(
@@ -552,11 +574,13 @@ def api_get_holidays(datum_api_url: str,
 def api_get_short_days(datum_api_url: str,
                      service_auth0_token: str,
                      gte_date: str,
-                     lte_date: str):
+                     lte_date: str,
+                     **kwargs):
     params = {
         "gte_date": gte_date,
         "lte_date": lte_date,
-        "short_day_name": True
+        "short_day_name": True,
+        **kwargs
     }
 
     return datum_api_get_request(
@@ -568,14 +592,15 @@ def api_get_short_days(datum_api_url: str,
 
 def api_get_median_opg_volume(datum_api_url: str,
                               service_auth0_token: str,
-                              date: datetime.date = None) -> dict:
+                              date: datetime.date = None,
+                              **kwargs) -> dict:
     if not date:
         date = common.get_current_datetime().date()
 
     list_of_dicts = datum_api_get_request(
         url=f'{datum_api_url}/calculations/median_opg_volume_20d',
         service_auth0_token=service_auth0_token,
-        params={'date_as_of': date}
+        params={'date_as_of': date, **kwargs}
     )
     return {row['ticker']: row['value'] for row in list_of_dicts}
 
