@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import datetime
 from typing import Optional, Union
 from urllib.request import urlopen
+import logging
 
 import jose.exceptions
 import requests
@@ -23,6 +24,8 @@ UserModel = getattr(
 )  # in tier_system AUTH_USER_MODEL="UserDataModel"
 from . import SingletonMeta, SERVICE_TOKEN_FILENAME, MANAGEMENT_TOKEN_FILENAME
 
+
+logger = logging.getLogger(__name__)
 
 class JWKS(metaclass=SingletonMeta):
     """
@@ -226,6 +229,7 @@ class ServiceAuth0Token(metaclass=SingletonMeta):
         self._token = token_data['access_token']
         self.expire = datetime.datetime.now() + datetime.timedelta(seconds=token_data['expires_in'] - 10)
         create_or_update_token_file(obj_to_set=self, token_filename=self.TOKEN_FILENAME)
+        logger.error(f'Service token is updated: {self.expire} {self.TOKEN_FILENAME} {self._token}')
 
     def _get_token(self, retry: int = 2):
         response = requests.post(

@@ -1,4 +1,4 @@
-import importlib
+import logging
 import json
 import datetime
 import os
@@ -17,6 +17,8 @@ from jose import jwt
 from . import SingletonMeta, SERVICE_TOKEN_FILENAME, MANAGEMENT_TOKEN_FILENAME
 
 UserModel = get_user_model()
+
+logger = logging.getLogger(__name__)
 
 
 class JWKS(metaclass=SingletonMeta):
@@ -257,6 +259,7 @@ class ServiceAuth0Token(metaclass=SingletonMeta):
         self._token = token_data['access_token']
         self.expire = datetime.datetime.now() + datetime.timedelta(seconds=token_data['expires_in'] - 10)
         create_or_update_token_file(obj_to_set=self, token_filename=self.TOKEN_FILENAME)
+        logger.error(f'Service token is updated: {self.expire} {self.TOKEN_FILENAME} {self._token}')
 
     def _get_token(self, retry: int = 2):
         response = requests.post(
