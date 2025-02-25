@@ -8,21 +8,30 @@ from typing import Union
 
 from st_common_data import datum
 
+HOLIDAYS_LIST_CACHE = dict()
+
 try:
     from app.settings import config
-    datum_api_url = config.datum_api_url
     from st_common_data.auth.fastapi_auth import service_auth0_token
-except Exception as e:
-    from django.conf import settings
-    datum_api_url = settings.DATUM_API_URL
-    from st_common_data.auth.django_auth import service_auth0_token
-
-HOLIDAYS_LIST_CACHE = datum.api_get_holidays(
-        datum_api_url=datum_api_url,
+    HOLIDAYS_LIST_CACHE = datum.api_get_holidays(
+        datum_api_url=config.datum_api_url,
         service_auth0_token=service_auth0_token,
         gte_date='2018-01-01',
         lte_date=str((datetime.datetime.now() + relativedelta(years=2)).date())
-)
+    )
+except Exception as e:
+    try:
+        from django.conf import settings
+        from st_common_data.auth.django_auth import service_auth0_token
+        HOLIDAYS_LIST_CACHE = datum.api_get_holidays(
+                datum_api_url=settings.DATUM_API_URL,
+                service_auth0_token=service_auth0_token,
+                gte_date='2018-01-01',
+                lte_date=str((datetime.datetime.now() + relativedelta(years=2)).date())
+        )
+    except Exception:
+        pass
+
 
 def touch_db(query, dbp, params=None, save=False, returning=False, transaction=False):
     try:
